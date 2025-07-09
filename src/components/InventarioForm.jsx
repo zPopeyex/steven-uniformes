@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Escaner from './Escaner';
 
 const colegios = ['Inem', 'Camacho', 'Agustin Nieto', 'San Luis', 'Pedro de Valdivia'];
 const prendas = ['Camibuso', 'Sudadera', 'Pantalón', 'Falda', 'Chaqueta'];
@@ -52,8 +53,31 @@ const InventarioForm = ({ onAgregar }) => {
     }
   };
 
+  const procesarCodigo = (codigo) => {
+  try {
+    // Supongamos que tus códigos están formateados como:
+    // colegio-prenda-talla-precio
+    const partes = codigo.split('-');
+
+    const [colegio, prenda, talla, precio] = partes;
+
+    setProducto({
+      colegio: colegio || '',
+      prenda: prenda || '',
+      talla: talla || '',
+      precio: precio || '',
+    });
+
+    setCantidad('');
+  } catch (error) {
+    console.error('Código inválido:', error);
+  }
+};
+
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+    <div >
+      <Escaner onDetect={procesarCodigo} /> 
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
 
       <select name="colegio" value={producto.colegio} onChange={handleChange}>
         <option value="">Nombre plantel</option>
@@ -77,6 +101,8 @@ const InventarioForm = ({ onAgregar }) => {
 </button>
 
     </form>
+    </div>
+    
   );
 };
 
