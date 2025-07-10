@@ -1,18 +1,21 @@
-// src/firebase/firebaseConfig.js
+// 📄 src/firebase/firebaseConfig.js
+
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDV0qCWVny7yZhc-jHoT1zJUIGi4ian3UI",
-  authDomain: "steven-uniformes.firebaseapp.com",
-  projectId: "steven-uniformes",
-  storageBucket: "steven-uniformes.firebasestorage.app",
-  messagingSenderId: "729409493250",
-  appId: "1:729409493250:web:69013722c6aada2b66ca1b"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
+
+// Inicializar Firestore
 const db = getFirestore(app);
 
 export { db };
