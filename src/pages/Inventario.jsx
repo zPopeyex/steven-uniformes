@@ -9,6 +9,7 @@ import {
   deleteDoc,
   doc,
   orderBy,
+  getDoc,
   query,
   where,
   updateDoc,
@@ -16,9 +17,12 @@ import {
 import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
 
+
 const Inventario = () => {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [primeraCarga, setPrimeraCarga] = useState(true);
+
 
   const cargarProductos = async () => {
     setLoading(true);
@@ -88,10 +92,66 @@ const ordenado = data.sort((a, b) => b.timestamp - a.timestamp);
     cargarProductos();
   };
 
-  const eliminarProducto = async (id) => {
-    await deleteDoc(doc(db, "inventario", id));
+const eliminarProducto = async (id) => {
+  try {
+    // 1. Obtener el documento que se va a eliminar del historial
+    const docRef = doc(db, 'inventario', id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      console.warn('El producto no existe en el historial');
+      return;
+    }
+
+    const producto = docSnap.data();
+
+    // 2. Buscar en el stock el producto con misma combinación
+    const stockRef = collection(db, 'inventario_stock');
+    const q = query(
+      stockRef,
+      where('colegio', '==', producto.colegio),
+      where('prenda', '==', producto.prenda),
+      where('talla', '==', producto.talla)
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const docExistente = snapshot.docs[0];
+      const stock = docExistente.data();
+      const cantidadAnterior = stock.cantidad || 0;
+      const nuevaCantidad = cantidadAnterior - producto.cantidad;
+
+      if (nuevaCantidad <= 0) {
+        // Si la cantidad queda en 0, dejar valores en 0
+        await updateDoc(doc(db, 'inventario_stock', docExistente.id), {
+          cantidad: 0,
+          total: 0,
+          precio: null
+        });
+      } else {
+        const precioUnitario = stock.precio || 0;
+        const nuevoTotal = nuevaCantidad * precioUnitario;
+
+        await updateDoc(doc(db, 'inventario_stock', docExistente.id), {
+          cantidad: nuevaCantidad,
+          total: nuevoTotal
+        });
+      }
+    }
+
+    // 3. Eliminar del historial
+    await deleteDoc(docRef);
+
+    // 4. Recargar tabla
     cargarProductos();
-  };
+
+  } catch (error) {
+    console.error('Error al eliminar y actualizar stock:', error);
+  }
+};
+
+
 
   useEffect(() => {
     cargarProductos();
