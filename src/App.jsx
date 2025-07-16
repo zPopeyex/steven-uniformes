@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Inicio from "./pages/Inicio";
 import Inventario from "./pages/Inventario";
 import Stock from "./pages/Stock";
+import Catalogo from "./pages/Catalogo";
 
 function App() {
   const [pagina, setPagina] = useState("inicio");
@@ -21,12 +22,14 @@ function App() {
         <button onClick={() => setPagina("stock")} style={botonEstilo}>
           📦 Ver Stock Actual
         </button>
+        <button onClick={() => setPagina("catalogo")} style={botonEstilo}>🛒 Catálogo de Productos</button>
       </div>
 
       {/* Contenido dinámico según la opción */}
       {pagina === "inicio" && <Inicio />}
       {pagina === "inventario" && <Inventario />}
       {pagina === "stock" && <Stock />}
+      {pagina === "catalogo" && <Catalogo />}
     </div>
   );
 }

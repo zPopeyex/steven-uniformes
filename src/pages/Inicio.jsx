@@ -15,7 +15,7 @@ const Inicio = () => {
         <li>➕ Agrega productos al inventario</li>
         <li>🧾 Futuro módulo de ventas, encargos, pagos, etc.</li>
       </ul>
-      <p style={{ marginTop: 20 }}>Versión 1.0. Desarrollado contigo, Leonardo 😎</p>
+      <p style={{ marginTop: 20 }}>Versión 1.0. Dev Leo 😎</p>
     </div>
   );
 };
