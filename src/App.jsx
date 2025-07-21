@@ -3,6 +3,7 @@ import Inicio from "./pages/Inicio";
 import Inventario from "./pages/Inventario";
 import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
+import Ventas from "./pages/Ventas";
 
 function App() {
   const [pagina, setPagina] = useState("inicio");
@@ -22,6 +23,9 @@ function App() {
         <button onClick={() => setPagina("stock")} style={botonEstilo}>
           📦 Ver Stock Actual
         </button>
+        <button onClick={() => setPagina("ventas")} style={botonEstilo}>
+        💵 Ventas/Encargos
+      </button>
         <button onClick={() => setPagina("catalogo")} style={botonEstilo}>🛒 Catálogo de Productos</button>
       </div>
 
@@ -30,6 +34,7 @@ function App() {
       {pagina === "inventario" && <Inventario />}
       {pagina === "stock" && <Stock />}
       {pagina === "catalogo" && <Catalogo />}
+      {pagina === "ventas" && <Ventas />}
     </div>
   );
 }
