@@ -12,6 +12,8 @@
   "dependencies": {
     "firebase": "^11.10.0",
     "html-to-image": "^1.11.13",
+    "html5-qrcode": "^2.3.8",
+    "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-qr-barcode-scanner": "^2.1.8",

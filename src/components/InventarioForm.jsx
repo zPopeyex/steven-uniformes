@@ -1,108 +1,118 @@
-import React, { useState } from 'react';
-import Escaner from './Escaner';
+// 📄 src/components/InventarioForm.jsx
+import React, { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase/firebaseConfig";
 
-const colegios = ['Inem', 'Camacho', 'Agustin Nieto', 'San Luis', 'Pedro de Valdivia'];
-const prendas = ['Camibuso', 'Sudadera', 'Pantalón', 'Falda', 'Chaqueta'];
-
-const InventarioForm = ({ onAgregar }) => {
+const InventarioForm = ({ onAgregar, productoEscaneado }) => {
   const [producto, setProducto] = useState({
-    colegio: '',
-    prenda: '',
-    talla: '',
-    cantidad: '',
-    precio: ''
+    colegio: "",
+    prenda: "",
+    talla: "",
+    precio: "",
+    cantidad: "",
   });
+
+  const [colegios, setColegios] = useState([]);
+  const [prendas, setPrendas] = useState([]);
+
+  // 🔄 Al cargar el formulario, extraer colegios y prendas únicas del catálogo
+  useEffect(() => {
+    const cargarDatos = async () => {
+      const snap = await getDocs(collection(db, "productos_catalogo"));
+      const docs = snap.docs.map((doc) => doc.data());
+
+      const colegiosUnicos = [...new Set(docs.map((p) => p.colegio))];
+      const prendasUnicas = [...new Set(docs.map((p) => p.prenda))];
+
+      setColegios(colegiosUnicos);
+      setPrendas(prendasUnicas);
+    };
+
+    cargarDatos();
+  }, []);
+
+  // 🟢 Si escanea, actualiza los valores automáticamente
+  useEffect(() => {
+    if (productoEscaneado) {
+      console.log("Producto escaneado recibido:", productoEscaneado);
+      setProducto((prev) => ({
+        ...prev,
+        ...productoEscaneado,
+      }));
+    }
+  }, [productoEscaneado]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setProducto({ ...producto, [name]: value });
+    setProducto((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const { colegio, prenda, talla, precio, cantidad } = producto;
 
-    const { colegio, prenda, talla, cantidad, precio } = producto;
-
-    if (colegio && prenda && talla && cantidad && precio) {
-      const cantidadNum = parseInt(cantidad);
-      const precioNum = parseFloat(precio);
-      const total = cantidadNum * precioNum;
-
-      const ahora = new Date();
-      const fecha = ahora.toLocaleDateString();
-      const hora = ahora.toLocaleTimeString();
-      const timestamp = ahora.getTime(); // número grande: ideal para orden
-
-
-      const productoFinal = {
-  ...producto,
-  cantidad: cantidadNum,
-  precio: precioNum,
-  total,
-  fecha,
-  hora,
-  timestamp, // 👈 obligatorio para ordenar
-};
-
-      onAgregar(productoFinal);
-
-      // Reiniciar el formulario
-      setProducto({ colegio: '', prenda: '', talla: '', cantidad: '', precio: '' });
-    } else {
-      alert('Por favor completa todos los campos');
+    if (!colegio || !prenda || !talla || !precio || !cantidad) {
+      alert("Completa todos los campos");
+      return;
     }
-  };
 
-  const procesarCodigo = (codigo) => {
-  try {
-    // Supongamos que tus códigos están formateados como:
-    // colegio-prenda-talla-precio
-    const partes = codigo.split('-');
+    const total = parseInt(precio) * parseInt(cantidad);
+   // const fecha = new Date().toLocaleDateString("es-CO");
+   // const hora = new Date().toLocaleTimeString("es-CO");
 
-    const [colegio, prenda, talla, precio] = partes;
 
-    setProducto({
-      colegio: colegio || '',
-      prenda: prenda || '',
-      talla: talla || '',
-      precio: precio || '',
-    });
-
-    setCantidad('');
-  } catch (error) {
-    console.error('Código inválido:', error);
-  }
+    const productoFinal = {
+      ...producto,
+      precio: parseInt(precio),
+      cantidad: parseInt(cantidad),
+    };
+    
+    onAgregar(productoFinal); 
 };
+
 
   return (
-    <div >
-      <Escaner onDetect={procesarCodigo} /> 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+    <form onSubmit={handleSubmit} style={{ marginBottom: "20px" }}>
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <select name="colegio" value={producto.colegio} onChange={handleChange}>
+          <option value="">Nombre plantel</option>
+          {colegios.map((c, i) => (
+            <option key={i} value={c}>{c}</option>
+          ))}
+        </select>
 
-      <select name="colegio" value={producto.colegio} onChange={handleChange}>
-        <option value="">Nombre plantel</option>
-        {colegios.map((c, i) => <option key={i} value={c}>{c}</option>)}
-      </select>
-      <select name="prenda" value={producto.prenda} onChange={handleChange}>
-        <option value="">Producto</option>
-        {prendas.map((p, i) => <option key={i} value={p}>{p}</option>)}
-      </select>
-      <input type="text" name="talla" placeholder="Talla" value={producto.talla} onChange={handleChange} />
-      <input type="number" name="cantidad" placeholder="Cantidad" value={producto.cantidad} onChange={handleChange} />
-      <input type="number" name="precio" placeholder="Vr. Unitario" value={producto.precio} onChange={handleChange} />
-      <button type="submit" style={{
-  padding: '5px 15px',
-  borderRadius: '8px',
-  border: '2px solid black',
-  backgroundColor: '#f1f1f1',
-  cursor: 'pointer'
-}}>
-  Agregar
-</button>
+        <select name="prenda" value={producto.prenda} onChange={handleChange}>
+          <option value="">Producto</option>
+          {prendas.map((p, i) => (
+            <option key={i} value={p}>{p}</option>
+          ))}
+        </select>
 
+        <input
+          name="talla"
+          value={producto.talla}
+          onChange={handleChange}
+          placeholder="Talla"
+        />
+        <input
+          name="cantidad"
+          value={producto.cantidad}
+          onChange={handleChange}
+          placeholder="Cantidad"
+          type="number"
+        />
+        <input
+          name="precio"
+          value={producto.precio}
+          onChange={handleChange}
+          placeholder="Precio"
+          type="number"
+        />
+      </div>
+      <button type="submit" style={{ marginTop: 10 }}>
+        ➕ Agregar al inventario
+      </button>
     </form>
-    </div>
-    
   );
 };
 

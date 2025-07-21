@@ -10,8 +10,7 @@ import {
 } from "firebase/firestore";
 import QRCode from "react-qr-code";
 import { toPng } from "html-to-image";
-import ReactDOMServer from "react-dom/server";
-
+import QRCodeLib from "qrcode"; // al principio del archivo
 
 const Catalogo = () => {
   const [productos, setProductos] = useState([]);
@@ -66,35 +65,24 @@ const Catalogo = () => {
     }
   };
 
-const descargarQR = async (id, nombreArchivo) => {
-  const nodo = document.getElementById(`qr-${id}`);
-  if (!nodo) return;
+  const descargarQR = async (contenido, nombreArchivo) => {
+    try {
+      const dataUrl = await QRCodeLib.toDataURL(contenido, {
+        errorCorrectionLevel: "H",
+        margin: 2,
+        scale: 10,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
 
-  try {
-    const dataUrl = await toPng(nodo, {
-      pixelRatio: 4,
-      cacheBust: true,
-      backgroundColor: "#ffffff", // asegura fondo blanco completo
-    });
-
-    const link = document.createElement("a");
-    link.download = `${nombreArchivo}.png`;
-    link.href = dataUrl;
-    link.click();
-  } catch (err) {
-    console.error("Error al generar QR:", err);
-  }
-};
-
-
-
-  const descargarTodosQR = async () => {
-    for (const prod of productos) {
-      await descargarQR(
-        prod.id,
-        `qr_${prod.colegio}-${prod.prenda}-${prod.talla}`
-      );
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      const link = document.createElement("a");
+      link.download = `${nombreArchivo}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Error al generar imagen QR:", err);
     }
   };
 
@@ -138,21 +126,6 @@ const descargarQR = async (id, nombreArchivo) => {
         <button type="submit">{editandoId ? "Actualizar" : "Agregar"}</button>
       </form>
 
-      <button
-        onClick={descargarTodosQR}
-        style={{
-          marginBottom: "10px",
-          padding: "10px 20px",
-          backgroundColor: "#2c3e50",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer",
-        }}
-      >
-        📥 Descargar TODOS los QR
-      </button>
-
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
@@ -172,26 +145,25 @@ const descargarQR = async (id, nombreArchivo) => {
               <td>{prod.talla}</td>
               <td>{parseInt(prod.precio).toLocaleString("es-CO")}</td>
               <td>
-<div
-  id={`qr-${prod.id}`}
-  style={{
-    display: "inline-block",
-    backgroundColor: "#ffffff", // blanco sólido
-    padding: "0",               // sin padding
-    margin: "0",                // sin márgenes
-    lineHeight: "0",            // elimina espacio vertical
-    width: "auto",
-  }}
->
-  <QRCode
-    value={`${prod.colegio}-${prod.prenda}-${prod.talla}`}
-    size={64}
-    bgColor="#ffffff"
-    fgColor="#000000"
-    level="H"
-  />
-</div>
-
+                <div
+                  id={`qr-${prod.id}`}
+                  style={{
+                    display: "inline-block",
+                    backgroundColor: "#ffffff",
+                    padding: "0",
+                    margin: "0",
+                    lineHeight: "0",
+                    width: "auto",
+                  }}
+                >
+                  <QRCode
+                    value={`${prod.colegio}-${prod.prenda}-${prod.talla}-${prod.precio}`}
+                    size={64} // aumenta tamaño real
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    level="H"
+                  />
+                </div>
               </td>
               <td>
                 <button onClick={() => handleEditar(prod)}>Editar</button>{" "}
@@ -202,15 +174,15 @@ const descargarQR = async (id, nombreArchivo) => {
                   Eliminar
                 </button>{" "}
                 <button
-  onClick={() =>
-    descargarQR(
-      prod.id,
-      `qr_${prod.colegio}-${prod.prenda}-${prod.talla}`
-    )
-  }
->
-  📥
-</button>
+                  onClick={() =>
+                    descargarQR(
+                      `${prod.colegio}-${prod.prenda}-${prod.talla}-${prod.precio}`,
+                      `qr_${prod.colegio}-${prod.prenda}-${prod.talla}`
+                    )
+                  }
+                >
+                  📥
+                </button>
               </td>
             </tr>
           ))}

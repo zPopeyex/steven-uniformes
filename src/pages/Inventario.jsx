@@ -1,185 +1,160 @@
 // 📄 src/pages/Inventario.jsx
-
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase/firebaseConfig";
 import {
   collection,
-  addDoc,
   getDocs,
+  addDoc,
   deleteDoc,
   doc,
-  orderBy,
-  getDoc,
   query,
   where,
+  getDoc,
   updateDoc,
 } from "firebase/firestore";
+import { db } from "../firebase/firebaseConfig";
 import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
-
+import Escaner from "../components/Escaner";
 
 const Inventario = () => {
-  const [productos, setProductos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [primeraCarga, setPrimeraCarga] = useState(true);
+  const [inventario, setInventario] = useState([]);
+  const [mostrarEscaner, setMostrarEscaner] = useState(false);
+  const [productoInicial, setProductoInicial] = useState(null);
 
-
-  const cargarProductos = async () => {
-    setLoading(true);
-    try {
-      const ref = collection(db, "inventario");
-      const snapshot = await getDocs(ref);
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      // 🔽 Ordenar por fecha descendente (si el campo existe)
-const ordenado = data.sort((a, b) => b.timestamp - a.timestamp);
-
-
-      setProductos(ordenado);
-    } catch (error) {
-      console.error("Error cargando productos:", error);
-    } finally {
-      setTimeout(() => setLoading(false), 500);
-    }
+  const cargarInventario = async () => {
+    const snap = await getDocs(collection(db, "inventario"));
+    const docs = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    setInventario(docs);
   };
-
-  const agregarProducto = async (nuevoProducto) => {
-    // 1. Guardar en inventario (historial completo)
-    await addDoc(collection(db, "inventario"), nuevoProducto);
-
-    // 2. Crear/actualizar inventario_stock
-    const stockRef = collection(db, "inventario_stock");
-    const q = query(
-      stockRef,
-      where("colegio", "==", nuevoProducto.colegio),
-      where("prenda", "==", nuevoProducto.prenda),
-      where("talla", "==", nuevoProducto.talla)
-    );
-
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-      const docExistente = snapshot.docs[0];
-      const cantidadAnterior = docExistente.data().cantidad || 0;
-      const nuevaCantidad = cantidadAnterior + nuevoProducto.cantidad;
-
-      await updateDoc(doc(db, "inventario_stock", docExistente.id), {
-        cantidad: nuevaCantidad,
-        precio: nuevoProducto.precio,
-        total: nuevaCantidad * nuevoProducto.precio,
-        fecha: nuevoProducto.fecha,
-        hora: nuevoProducto.hora,
-        timestamp: nuevoProducto.timestamp,
-      });
-    } else {
-      await addDoc(stockRef, {
-        colegio: nuevoProducto.colegio,
-        prenda: nuevoProducto.prenda,
-        talla: nuevoProducto.talla,
-        cantidad: nuevoProducto.cantidad,
-        precio: nuevoProducto.precio,
-        total: nuevoProducto.total,
-        fecha: nuevoProducto.fecha,
-        hora: nuevoProducto.hora,
-        timestamp: nuevoProducto.timestamp,
-      });
-    }
-
-    // 3. Recargar tabla principal
-    cargarProductos();
-  };
-
-const eliminarProducto = async (id) => {
-  try {
-    // 1. Obtener el documento que se va a eliminar del historial
-    const docRef = doc(db, 'inventario', id);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      console.warn('El producto no existe en el historial');
-      return;
-    }
-
-    const producto = docSnap.data();
-
-    // 2. Buscar en el stock el producto con misma combinación
-    const stockRef = collection(db, 'inventario_stock');
-    const q = query(
-      stockRef,
-      where('colegio', '==', producto.colegio),
-      where('prenda', '==', producto.prenda),
-      where('talla', '==', producto.talla)
-    );
-
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-      const docExistente = snapshot.docs[0];
-      const stock = docExistente.data();
-      const cantidadAnterior = stock.cantidad || 0;
-      const nuevaCantidad = cantidadAnterior - producto.cantidad;
-
-      if (nuevaCantidad <= 0) {
-        // Si la cantidad queda en 0, dejar valores en 0
-        await updateDoc(doc(db, 'inventario_stock', docExistente.id), {
-          cantidad: 0,
-          total: 0,
-          precio: null
-        });
-      } else {
-        const precioUnitario = stock.precio || 0;
-        const nuevoTotal = nuevaCantidad * precioUnitario;
-
-        await updateDoc(doc(db, 'inventario_stock', docExistente.id), {
-          cantidad: nuevaCantidad,
-          total: nuevoTotal
-        });
-      }
-    }
-
-    // 3. Eliminar del historial
-    await deleteDoc(docRef);
-
-    // 4. Recargar tabla
-    cargarProductos();
-
-  } catch (error) {
-    console.error('Error al eliminar y actualizar stock:', error);
-  }
-};
-
-
 
   useEffect(() => {
-    cargarProductos();
+    cargarInventario();
   }, []);
+
+  // ✅ Escaneo de QR
+  const handleQRDetectado = (codigo) => {
+    if (!codigo) return;
+    const partes = codigo.split("-");
+    const [colegio, prenda, talla, precio] = partes;
+    if (colegio && prenda && talla && precio) {
+      setProductoInicial({
+        colegio,
+        prenda,
+        talla,
+        precio,
+        cantidad: "",
+      });
+      console.log("Producto QR escaneado:", { colegio, prenda, talla, precio });
+      setMostrarEscaner(false);
+    } else {
+      alert("El código QR no tiene el formato esperado.");
+    }
+  };
+
+  // ✅ Agregar al inventario y también al stock_actual
+  const handleAgregarInventario = async (productoFinal) => {
+    try {
+      await addDoc(collection(db, "inventario"), {
+        ...productoFinal,
+        fechaHora: new Date(), // Guarda fecha y hora exacta de forma legible
+      });
+
+      const q = query(
+        collection(db, "stock_actual"),
+        where("colegio", "==", productoFinal.colegio),
+        where("prenda", "==", productoFinal.prenda),
+        where("talla", "==", productoFinal.talla)
+      );
+
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        // No existe en stock, crear nuevo
+        await addDoc(collection(db, "stock_actual"), {
+          ...productoFinal,
+          cantidad: parseInt(productoFinal.cantidad || 1),
+        });
+      } else {
+        // Existe, actualizar cantidad sumando
+        const docRef = snap.docs[0].ref;
+        const data = snap.docs[0].data();
+        await updateDoc(docRef, {
+          cantidad:
+            parseInt(data.cantidad || 0) +
+            parseInt(productoFinal.cantidad || 1),
+        });
+      }
+
+      cargarInventario();
+      setProductoInicial(null);
+    } catch (error) {
+      console.error("Error al guardar en inventario:", error);
+    }
+  };
+
+  // ✅ Eliminar de inventario y RESTAR del stock_actual
+  const handleEliminar = async (id) => {
+    try {
+      const docRef = doc(db, "inventario", id);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+
+      const producto = docSnap.data();
+
+      // Buscar el producto en stock_actual
+      const q = query(
+        collection(db, "stock_actual"),
+        where("colegio", "==", producto.colegio),
+        where("prenda", "==", producto.prenda),
+        where("talla", "==", producto.talla)
+      );
+
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const stockDoc = snap.docs[0];
+        const stockData = stockDoc.data();
+        const nuevaCantidad =
+          parseInt(stockData.cantidad || 0) - parseInt(producto.cantidad || 1);
+
+        if (nuevaCantidad > 0) {
+          await updateDoc(stockDoc.ref, { cantidad: nuevaCantidad });
+        } else {
+          await deleteDoc(stockDoc.ref);
+        }
+      }
+
+      // Eliminar del inventario
+      await deleteDoc(docRef);
+      cargarInventario();
+    } catch (err) {
+      console.error("Error eliminando producto:", err);
+    }
+  };
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>➕ Agregar Inventario</h2>
+      <h2>📦 Agregar al Inventario</h2>
 
-      <InventarioForm onAgregar={agregarProducto} />
+      <button
+        onClick={() => setMostrarEscaner((prev) => !prev)}
+        style={{
+          padding: "10px 20px",
+          marginBottom: 10,
+          borderRadius: 8,
+          backgroundColor: "#cde",
+          cursor: "pointer",
+        }}
+      >
+        {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
+      </button>
 
-      <hr style={{ margin: "20px 0" }} />
+      {mostrarEscaner && <Escaner onScan={handleQRDetectado} />}
 
-      {loading ? (
-        <div
-          style={{
-            fontWeight: "bold",
-            fontSize: "18px",
-            backgroundColor: "#f4f4f4",
-            padding: "20px",
-            borderRadius: "8px",
-          }}
-        >
-          ⏳ Cargando inventario...
-        </div>
-      ) : (
-        <InventarioTable productos={productos} onEliminar={eliminarProducto} />
-      )}
+      <InventarioForm
+        productoEscaneado={productoInicial}
+        onAgregar={handleAgregarInventario}
+      />
+
+      <InventarioTable productos={inventario} onEliminar={handleEliminar} />
     </div>
   );
 };
