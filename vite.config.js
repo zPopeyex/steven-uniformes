@@ -5,20 +5,38 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ['all'],
+    port: 3000,
+    strictPort: true,
+    allowedHosts: ['all']
   },
   build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 1600,
     rollupOptions: {
-    output: {
-      manualChunks: {
-        firebase: ['firebase/app', 'firebase/firestore', 'firebase/auth'],
-        react: ['react', 'react-dom'],
+      output: {
+        manualChunks: {
+          firebase: [
+            'firebase/app',
+            'firebase/firestore',
+            'firebase/auth',
+            'firebase/storage'
+          ],
+          react: ['react', 'react-dom'],
+          vendor: [
+            'html5-qrcode',
+            'qrcode',
+            'html-to-image'
+          ]
+        },
+        entryFileNames: `assets/[name].js`,
+        chunkFileNames: `assets/[name].js`,
+        assetFileNames: `assets/[name].[ext]`
       }
-    },
-    outDir: 'dist', // Esta es la carpeta que genera Vite
-    chunkSizeWarningLimit: 1000, // Para evitar warnings de tamaño
-  }
-    
-
+    }
+  },
+  preview: {
+    port: 3000,
+    strictPort: true
   }
 })
