@@ -1,7 +1,8 @@
+// VentasTable.jsx
 import React from "react";
 
 const VentasTable = ({ ventas }) => {
-  // Estilos
+  // Estilos (mantener los existentes)
   const estiloEncabezado = {
     padding: "10px",
     backgroundColor: "#f4f4f4",
@@ -37,11 +38,16 @@ const VentasTable = ({ ventas }) => {
     });
   };
 
-  // Ordenar por fecha/hora (más reciente primero)
+  // Ordenar por fecha/hora (más reciente primero) - Versión mejorada
   const ventasOrdenadas = [...ventas].sort((a, b) => {
-    const fechaA = a.fechaHora?.seconds || 0;
-    const fechaB = b.fechaHora?.seconds || 0;
-    return fechaB - fechaA;
+    // Si no tienen fechaHora, las ponemos al final
+    if (!a.fechaHora?.seconds && !b.fechaHora?.seconds) return 0;
+    if (!a.fechaHora?.seconds) return 1;
+    if (!b.fechaHora?.seconds) return -1;
+    
+    // Comparación por timestamp
+    return b.fechaHora.seconds - a.fechaHora.seconds || 
+           b.fechaHora.nanoseconds - a.fechaHora.nanoseconds;
   });
 
   return (
@@ -60,7 +66,6 @@ const VentasTable = ({ ventas }) => {
             <th style={estiloEncabezado}>Producto</th>
             <th style={estiloEncabezado}>Colegio</th>
             <th style={estiloEncabezado}>Talla</th>
-
             <th style={estiloEncabezado}>Precio Unit.</th>
             <th style={estiloEncabezado}>Total</th>
             <th style={estiloEncabezado}>Método Pago</th>
@@ -76,7 +81,6 @@ const VentasTable = ({ ventas }) => {
               <td style={estiloCelda}>{v.prenda}</td>
               <td style={estiloCelda}>{v.colegio}</td>
               <td style={estiloCelda}>{v.talla}</td>
-
               <td style={estiloCelda}>
                 ${(v.precio || 0).toLocaleString("es-CO")}
               </td>

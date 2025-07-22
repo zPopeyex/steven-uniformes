@@ -18,25 +18,35 @@ const VentasForm = ({ productoEscaneado, onAgregar }) => {
   const [catalogos, setCatalogos] = useState({ colegios: [], prendas: [], tallas: [] });
 
   // Cargar datos iniciales
-  useEffect(() => {
-    const cargarDatos = async () => {
-      const [stockSnap, catalogSnap] = await Promise.all([
-        getDocs(collection(db, "stock_actual")),
-        getDocs(collection(db, "productos_catalogo"))
-      ]);
+useEffect(() => {
+  const cargarDatos = async () => {
+    const [stockSnap, catalogSnap] = await Promise.all([
+      getDocs(collection(db, "stock_actual")),
+      getDocs(collection(db, "productos_catalogo"))
+    ]);
 
-      setProductosDisponibles(stockSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      
-      const catalogData = catalogSnap.docs.map(doc => doc.data());
-      setCatalogos({
-        colegios: [...new Set(catalogData.map(p => p.colegio))],
-        prendas: [...new Set(catalogData.map(p => p.prenda))],
-        tallas: [...new Set(catalogData.map(p => p.talla))]
-      });
-    };
+    setProductosDisponibles(stockSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    
+    const catalogData = catalogSnap.docs.map(doc => doc.data());
+    
+    // Orden personalizado para tallas
+    const ordenTallas = ['6', '8', '10', '12', '14', '16', 'S', 'M', 'L', 'XL', 'XXL'];
+    const tallasUnicas = [...new Set(catalogData.map(p => p.talla))];
+    const tallasOrdenadas = tallasUnicas.sort((a, b) => {
+      const indexA = ordenTallas.indexOf(a);
+      const indexB = ordenTallas.indexOf(b);
+      return indexA - indexB;
+    }).filter(t => t); // Filtra valores undefined/null
 
-    cargarDatos();
-  }, []);
+    setCatalogos({
+      colegios: [...new Set(catalogData.map(p => p.colegio))].sort(),
+      prendas: [...new Set(catalogData.map(p => p.prenda))].sort(),
+      tallas: tallasOrdenadas
+    });
+  };
+
+  cargarDatos();
+}, []);
 
   // Autocompletar con QR
   useEffect(() => {
