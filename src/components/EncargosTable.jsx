@@ -50,7 +50,11 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
   };
 
   const handleCancelarEncargo = (id) => {
-    if (window.confirm("¿Cancelar este encargo? Esta acción no se puede deshacer.")) {
+    if (
+      window.confirm(
+        "¿Cancelar este encargo? Esta acción no se puede deshacer."
+      )
+    ) {
       onActualizarEstado(id, "cancelado");
     }
   };
@@ -92,15 +96,20 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
                         textAlign: "left",
                       }}
                     >
-                      {encargoExpandido === encargo.id ? "▼" : "▶"} {encargo.numeroFactura}
+                      {encargoExpandido === encargo.id ? "▼" : "▶"}{" "}
+                      {encargo.numeroFactura}
                     </button>
                   </td>
                   <td style={estiloCelda}>
-                    {encargo.cliente?.nombre || "N/A"} {encargo.cliente?.apellido || ""}
-                    {encargo.cliente?.telefono && ` (${encargo.cliente.telefono})`}
+                    {encargo.cliente?.nombre || "N/A"}{" "}
+                    {encargo.cliente?.apellido || ""}
+                    {encargo.cliente?.telefono &&
+                      ` (${encargo.cliente.telefono})`}
                   </td>
                   <td style={estiloCelda}>{formatearFecha(encargo.fecha)}</td>
-                  <td style={estiloCelda}>${encargo.total?.toLocaleString("es-CO") || "0"}</td>
+                  <td style={estiloCelda}>
+                    ${encargo.total?.toLocaleString("es-CO") || "0"}
+                  </td>
                   <td style={estiloCelda}>
                     <span
                       style={{
@@ -148,37 +157,80 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
                     <td colSpan="6" style={{ backgroundColor: "#f9f9f9" }}>
                       <div style={{ padding: "15px" }}>
                         <h4 style={{ marginTop: 0 }}>Detalles del Encargo</h4>
-                        
+
                         <div style={{ marginBottom: "10px" }}>
-                          <strong>Cliente:</strong> {encargo.cliente?.nombre} {encargo.cliente?.apellido}
+                          <strong>Cliente:</strong> {encargo.cliente?.nombre}{" "}
+                          {encargo.cliente?.apellido}
                           <br />
-                          <strong>Documento:</strong> {encargo.cliente?.documento || "No especificado"}
+                          <strong>Documento:</strong>{" "}
+                          {encargo.cliente?.documento || "No especificado"}
                           <br />
-                          <strong>Teléfono:</strong> {encargo.cliente?.telefono || "No especificado"}
+                          <strong>Teléfono:</strong>{" "}
+                          {encargo.cliente?.telefono || "No especificado"}
                         </div>
-                        
+
                         <div style={{ marginBottom: "10px" }}>
                           <strong>Productos:</strong>
                           <ul style={{ margin: "5px 0", paddingLeft: "20px" }}>
                             {encargo.productos?.map((producto, index) => (
                               <li key={index}>
-                                {producto.cantidad}x {producto.prenda} ({producto.talla}) - ${producto.precio?.toLocaleString("es-CO")} c/u
+                                {producto.cantidad}x {producto.prenda} (
+                                {producto.talla}) - $
+                                {producto.precio?.toLocaleString("es-CO")} c/u
                                 <br />
                                 <small>
-                                  Colegio: {producto.colegio} - Total: ${(producto.precio * producto.cantidad).toLocaleString("es-CO")}
+                                  Colegio: {producto.colegio} - Total: $
+                                  {(
+                                    producto.precio * producto.cantidad
+                                  ).toLocaleString("es-CO")}
                                 </small>
                               </li>
                             ))}
                           </ul>
                         </div>
-                        
+
                         <div>
-                          <strong>Total Encargo:</strong> ${encargo.total?.toLocaleString("es-CO")}
+                          <strong>Total Encargo:</strong> $
+                          {encargo.total?.toLocaleString("es-CO")}
                           <br />
-                          {encargo.observaciones && (
+                          <strong>Abono:</strong> $
+                          {(encargo.abono !== undefined
+                            ? encargo.abono
+                            : encargo.total
+                          )?.toLocaleString("es-CO")}
+                          <br />
+                          {(encargo.total || 0) -
+                            (encargo.abono > 0
+                              ? encargo.abono
+                              : encargo.total || 0) >
+                          0 ? (
                             <>
-                              <strong>Observaciones:</strong> {encargo.observaciones}
+                              <strong>Saldo:</strong>{" "}
+                              <span
+                                style={{ color: "#f44336", fontWeight: "bold" }}
+                              >
+                                $
+                                {(
+                                  encargo.total -
+                                  (encargo.abono ?? encargo.total)
+                                ).toLocaleString("es-CO")}
+                              </span>
+                              <span
+                                style={{
+                                  marginLeft: 10,
+                                  color: "#f44336",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                ⚠️ Pendiente
+                              </span>
                             </>
+                          ) : (
+                            <span
+                              style={{ color: "#4CAF50", fontWeight: "bold" }}
+                            >
+                              ✅ Pagado
+                            </span>
                           )}
                         </div>
                       </div>
