@@ -156,6 +156,21 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
                   <tr>
                     <td colSpan="6" style={{ backgroundColor: "#f9f9f9" }}>
                       <div style={{ padding: "15px" }}>
+                        {/* Cálculo inteligente de abono y saldo */}
+                        {(() => {
+                          // Si el abono es 0 o no existe, se asume pagado (abono = total)
+                          var abonoReal =
+                            (encargo.abono ?? 0) > 0
+                              ? encargo.abono
+                              : encargo.total;
+                          var saldoReal =
+                            (encargo.total ?? 0) - (abonoReal ?? 0);
+                          // Lo dejamos en scope para el render siguiente
+                          encargo._abonoReal = abonoReal;
+                          encargo._saldoReal = saldoReal;
+                          return null;
+                        })()}
+
                         <h4 style={{ marginTop: 0 }}>Detalles del Encargo</h4>
 
                         <div style={{ marginBottom: "10px" }}>
@@ -176,7 +191,28 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
                               <li key={index}>
                                 {producto.cantidad}x {producto.prenda} (
                                 {producto.talla}) - $
-                                {producto.precio?.toLocaleString("es-CO")} c/u
+                                {producto.precio?.toLocaleString("es-CO")} c/u{" "}
+                                {producto.entregado === true ? (
+                                  <span
+                                    style={{
+                                      color: "#4CAF50",
+                                      fontWeight: "bold",
+                                      marginLeft: 5,
+                                    }}
+                                  >
+                                    ✅
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      color: "#f44336",
+                                      fontWeight: "bold",
+                                      marginLeft: 5,
+                                    }}
+                                  >
+                                    ⚠️ Pendiente entrega
+                                  </span>
+                                )}
                                 <br />
                                 <small>
                                   Colegio: {producto.colegio} - Total: $
@@ -194,44 +230,31 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
                           {encargo.total?.toLocaleString("es-CO")}
                           <br />
                           <strong>Abono:</strong> $
-                          {(encargo.abono !== undefined
-                            ? encargo.abono
-                            : encargo.total
-                          )?.toLocaleString("es-CO")}
+                          {encargo._abonoReal?.toLocaleString("es-CO")}
                           <br />
-                          {(encargo.total || 0) -
-                            (encargo.abono > 0
-                              ? encargo.abono
-                              : encargo.total || 0) >
-                          0 ? (
-                            <>
-                              <strong>Saldo:</strong>{" "}
-                              <span
-                                style={{ color: "#f44336", fontWeight: "bold" }}
-                              >
-                                $
-                                {(
-                                  encargo.total -
-                                  (encargo.abono ?? encargo.total)
-                                ).toLocaleString("es-CO")}
-                              </span>
-                              <span
-                                style={{
-                                  marginLeft: 10,
-                                  color: "#f44336",
-                                  fontWeight: "bold",
-                                }}
-                              >
-                                ⚠️ Pendiente
-                              </span>
-                            </>
-                          ) : (
-                            <span
-                              style={{ color: "#4CAF50", fontWeight: "bold" }}
-                            >
-                              ✅ Pagado
-                            </span>
-                          )}
+                          <strong>Saldo:</strong>{" "}
+                          <span
+                            style={{
+                              color:
+                                encargo._saldoReal > 0 ? "#f44336" : "#4CAF50",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            $
+                            {encargo._saldoReal?.toLocaleString("es-CO") || "0"}
+                          </span>
+                          <span
+                            style={{
+                              marginLeft: 10,
+                              color:
+                                encargo._saldoReal > 0 ? "#f44336" : "#4CAF50",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {encargo._saldoReal > 0
+                              ? "⚠️ Pendiente"
+                              : "✅ Pagado"}
+                          </span>
                         </div>
                       </div>
                     </td>

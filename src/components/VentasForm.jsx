@@ -134,7 +134,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     }
     // Producto nuevo
     const totalItem = Number(venta.precio) * Number(venta.cantidad);
-    
+
     const abono =
       venta.estado === "separado" || venta.estado === "encargo"
         ? Number(venta.abono) || 0
@@ -157,6 +157,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
       abono,
       saldo,
       id: Date.now(),
+      entregado: true,
     };
 
     setCarrito([...carrito, nuevoItem]);
@@ -176,6 +177,14 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
   // Eliminar del carrito
   const eliminarDelCarrito = (id) => {
     setCarrito(carrito.filter((item) => item.id !== id));
+  };
+
+  const togglePendienteEntrega = (id) => {
+    setCarrito((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, entregado: !item.entregado } : item
+      )
+    );
   };
 
   // Cuando seleccionan "encargo", muestra el modal después del chequeo
@@ -226,21 +235,33 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
         documento: datosEncargo.documento,
         formaPago: datosEncargo.formaPago,
       },
-      productos: carrito.map((item) => ({
-        colegio: item.colegio,
-        prenda: item.prenda,
-        talla: item.talla,
-        precio: Number(item.precio),
-        cantidad: Number(item.cantidad),
-        abono: Number(item.abono) || 0,
-        saldo: Number(item.saldo) || 0,
-        total: Number(item.precio) * Number(item.cantidad),
-      })),
-      abono: carrito.reduce((s, i) => s + (i.abono || 0), 0),
+      productos: carrito.map((item) => {
+        const base = {
+          colegio: item.colegio,
+          prenda: item.prenda,
+          talla: item.talla,
+          precio: Number(item.precio),
+          cantidad: Number(item.cantidad),
+          total: Number(item.precio) * Number(item.cantidad),
+          entregado: item.entregado === undefined ? false : item.entregado, // así como lo tengas en el carrito
+        };
+
+        if (carrito.length === 1) {
+          return {
+            ...base,
+            abono: Number(item.abono) || 0,
+            saldo: Number(item.saldo) || 0,
+          };
+        } else {
+          return base; // sin abono/saldo individual
+        }
+      }),
+
+      abono: Number(datosEncargo.abono) || 0,
       total: carrito.reduce((s, i) => s + (i.total || 0), 0),
       saldo:
         carrito.reduce((s, i) => s + (i.total || 0), 0) -
-        carrito.reduce((s, i) => s + (i.abono || 0), 0),
+        (Number(datosEncargo.abono) || 0),
     };
     // Llamar al handler padre
     const exito = await onAgregarEncargo(encargoCompleto);
@@ -398,31 +419,32 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             <option value="separado">Separado</option>
           </select>
         </div>
-        {(venta.estado === "separado" || venta.estado === "encargo") && (
-          <>
-            <div>
-              <label>Abono</label>
-              <input
-                type="number"
-                name="abono"
-                value={venta.abono}
-                onChange={handleChange}
-                min="0"
-                max={totalVenta}
-              />
-            </div>
-            <div>
-              <label>Saldo</label>
-              <input
-                type="number"
-                name="saldo"
-                value={venta.saldo}
-                readOnly
-                style={{ backgroundColor: "#f0f0f0" }}
-              />
-            </div>
-          </>
-        )}
+        {(venta.estado === "separado" || venta.estado === "encargo") &&
+          carrito.length <= 0 && (
+            <>
+              <div>
+                <label>Abono</label>
+                <input
+                  type="number"
+                  name="abono"
+                  value={venta.abono}
+                  onChange={handleChange}
+                  min="0"
+                  max={totalVenta}
+                />
+              </div>
+              <div>
+                <label>Saldo</label>
+                <input
+                  type="number"
+                  name="saldo"
+                  value={venta.saldo}
+                  readOnly
+                  style={{ backgroundColor: "#f0f0f0" }}
+                />
+              </div>
+            </>
+          )}
 
         <div>
           <label>Cliente (Opcional)</label>
@@ -594,12 +616,24 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
                 Registrar Encargo
               </button>
               <div style={{ marginBottom: "12px" }}>
+                <label>Abono Total del Encargo</label>
+                <input
+                  type="number"
+                  name="abono"
+                  value={datosEncargo.abono}
+                  onChange={handleChangeEncargo}
+                  min="0"
+                  max={carrito.reduce((s, i) => s + (i.total || 0), 0)}
+                  style={{ width: "100%", padding: "8px" }}
+                />
+              </div>
+              <div style={{ marginBottom: "12px" }}>
                 <label>Saldo (automático)</label>
                 <input
                   type="number"
                   value={
                     carrito.reduce((s, i) => s + (i.total || 0), 0) -
-                    carrito.reduce((s, i) => s + (i.abono || 0), 0)
+                    (Number(datosEncargo.abono) || 0)
                   }
                   readOnly
                   style={{
@@ -700,6 +734,9 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
                 >
                   Saldo
                 </th>
+                <th style={{ textAlign: "center", width: "130px" }}>
+                  Pendiente entrega
+                </th>
                 <th
                   style={{
                     textAlign: "left",
@@ -753,6 +790,30 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
                     style={{ padding: "8px", borderBottom: "1px solid #ddd" }}
                   >
                     ${item.saldo?.toLocaleString("es-CO") || "0"}
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!item.entregado} // true = pendiente
+                        onChange={() => togglePendienteEntrega(item.id)}
+                        style={{
+                          transform: "scale(1.3)",
+                          accentColor: "#f44336", // hace que el check sea rojo (opcional)
+                          cursor: "pointer",
+                        }}
+                      />
+                      <span style={{ fontSize: "0.95em", color: "#555" }}>
+                        (Pendiente)
+                      </span>
+                    </label>
                   </td>
 
                   <td
