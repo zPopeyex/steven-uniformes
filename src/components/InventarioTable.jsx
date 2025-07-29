@@ -1,6 +1,7 @@
 // 📄 src/components/InventarioTable.jsx
 
 import React from "react";
+import CardTable from './CardTable'; // Ajusta la ruta
 
 const InventarioTable = ({ productos = [], onEliminar }) => {
   const convertirFecha = (fechaHora) => {
@@ -21,6 +22,10 @@ const InventarioTable = ({ productos = [], onEliminar }) => {
 
   return (
     <div style={{ overflowX: "auto", marginTop: 20 }}>
+      <CardTable
+  title="Historial de ingreso de inventario 📦"
+  right={productos.length + " productos"}
+>
       <table
         style={{
           border: "1px solid #ddd",
@@ -41,43 +46,51 @@ const InventarioTable = ({ productos = [], onEliminar }) => {
           <th>Acciones</th>
           </tr>
         </thead>
-        <tbody>
-          {productos.map((p, index) => {
-            const cantidad = parseInt(p.cantidad || 0);
-            const precio = parseInt(p.precio || 0);
-            const total = precio * cantidad;
+<tbody>
+  {[...productos]
+    .sort((a, b) => {
+      // Si alguno no tiene fecha, lo manda abajo
+      if (!a.fechaHora?.seconds) return 1;
+      if (!b.fechaHora?.seconds) return -1;
+      return b.fechaHora.seconds - a.fechaHora.seconds;
+    })
+    .map((p, index) => {
+      const cantidad = parseInt(p.cantidad || 0);
+      const precio = parseInt(p.precio || 0);
+      const total = precio * cantidad;
 
-            return (
-              <tr key={index}>
-                <td style={estiloCelda}>{p.colegio}</td>
-                <td style={estiloCelda}>{p.prenda}</td>
-                <td style={estiloCelda}>{p.talla}</td>
-                <td style={estiloCelda}>{cantidad}</td>
-                <td style={estiloCelda}>{precio.toLocaleString("es-CO")}</td>
-                <td style={estiloCelda}>{total.toLocaleString("es-CO")}</td>
-                <td style={estiloCelda}>{convertirFecha(p.fechaHora)}</td>
-                <td style={estiloCelda}>{convertirHora(p.fechaHora)}</td>
+      return (
+        <tr key={index}>
+          <td style={estiloCelda}>{p.colegio}</td>
+          <td style={estiloCelda}>{p.prenda}</td>
+          <td style={estiloCelda}>{p.talla}</td>
+          <td style={estiloCelda}>{cantidad}</td>
+          <td style={estiloCelda}>{precio.toLocaleString("es-CO")}</td>
+          <td style={estiloCelda}>{total.toLocaleString("es-CO")}</td>
+          <td style={estiloCelda}>{convertirFecha(p.fechaHora)}</td>
+          <td style={estiloCelda}>{convertirHora(p.fechaHora)}</td>
+          <td style={estiloCelda}>
+            <button
+              onClick={() => onEliminar(p.id)}
+              style={{
+                backgroundColor: 'red',
+                color: 'white',
+                border: 'none',
+                padding: '5px 10px',
+                borderRadius: '5px',
+                cursor: 'pointer'
+              }}
+            >
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      );
+    })}
+</tbody>
 
-                <td style={estiloCelda}>
-                  <button
-                    onClick={() => onEliminar(p.id)}
-                    style={{
-                  backgroundColor: 'red',
-                  color: 'white',
-                  border: 'none',
-                  padding: '5px 10px',
-                  borderRadius: '5px',
-                  cursor: 'pointer'
-                }}
-                  >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
       </table>
+      </CardTable>
     </div>
   );
 };
