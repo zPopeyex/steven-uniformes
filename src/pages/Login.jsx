@@ -1,14 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "../firebase/firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const Login = () => {
-  const auth = getAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,7 +12,7 @@ const Login = () => {
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await login(email, password);
       navigate("/");
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
@@ -27,8 +22,7 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await loginWithGoogle();
       navigate("/");
     } catch (error) {
       console.error("Error al iniciar sesión con Google:", error);
