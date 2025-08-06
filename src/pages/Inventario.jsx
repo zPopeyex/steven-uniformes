@@ -1,5 +1,6 @@
 // 📄 src/pages/Inventario.jsx
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../contexts/AuthContext.jsx";
 import {
   collection,
   getDocs,
@@ -16,7 +17,8 @@ import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
 import Escaner from "../components/Escaner";
 
-const Inventario = ({ role }) => {
+const Inventario = () => {
+  const { hasRole } = useAuth();
   const [inventario, setInventario] = useState([]);
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
   const [productoInicial, setProductoInicial] = useState(null);
@@ -134,7 +136,7 @@ const Inventario = ({ role }) => {
     <div style={{ padding: 20 }}>
       <h2>📦 Agregar al Inventario</h2>
 
-      {role === "Admin" && (
+      {hasRole("admin") && (
         <>
           <button
             onClick={() => setMostrarEscaner((prev) => !prev)}
@@ -158,11 +160,7 @@ const Inventario = ({ role }) => {
         </>
       )}
 
-      <InventarioTable
-        productos={inventario}
-        onEliminar={handleEliminar}
-        role={role}
-      />
+      <InventarioTable productos={inventario} onEliminar={handleEliminar} />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAuth } from "./contexts/AuthContext.jsx";
 import Inicio from "./pages/Inicio";
 import Inventario from "./pages/Inventario";
 import Stock from "./pages/Stock";
@@ -8,28 +9,14 @@ import UserManagement from "./pages/UserManagement";
 
 function App() {
   const [pagina, setPagina] = useState("inicio");
-  const [role, setRole] = useState(
-    () => localStorage.getItem("role") || "Admin"
-  );
-
-  const handleChangeRole = (e) => {
-    const newRole = e.target.value;
-    setRole(newRole);
-    localStorage.setItem("role", newRole);
-  };
+  const { role, hasRole } = useAuth();
 
   return (
     <div style={{ padding: 20 }}>
       <h1>🧵 Steven Todo en Uniformes</h1>
 
       <div style={{ marginBottom: 20 }}>
-        <label htmlFor="rol" style={{ marginRight: 10 }}>
-          Rol:
-        </label>
-        <select id="rol" value={role} onChange={handleChangeRole}>
-          <option value="Admin">Admin</option>
-          <option value="Vendedor">Vendedor</option>
-        </select>
+        <strong>Rol:</strong> {role || "sin asignar"}
       </div>
 
       {/* Menú superior */}
@@ -37,7 +24,7 @@ function App() {
         <button onClick={() => setPagina("inicio")} style={botonEstilo}>
           🏠 Inicio
         </button>
-        {role === "Admin" && (
+        {hasRole("admin") && (
           <button onClick={() => setPagina("inventario")} style={botonEstilo}>
             ➕ Agregar Inventario
           </button>
@@ -51,7 +38,7 @@ function App() {
         <button onClick={() => setPagina("catalogo")} style={botonEstilo}>
           🛒 Catálogo de Productos
         </button>
-        {role === "Admin" && (
+        {hasRole("admin") && (
           <button onClick={() => setPagina("usuarios")} style={botonEstilo}>
             👥 Usuarios
           </button>
@@ -60,11 +47,11 @@ function App() {
 
       {/* Contenido dinámico según la opción */}
       {pagina === "inicio" && <Inicio />}
-      {pagina === "inventario" && <Inventario role={role} />}
+      {pagina === "inventario" && <Inventario />}
       {pagina === "stock" && <Stock />}
       {pagina === "catalogo" && <Catalogo />}
-      {pagina === "ventas" && <Ventas role={role} />}
-      {pagina === "usuarios" && role === "Admin" && <UserManagement />}
+      {pagina === "ventas" && <Ventas />}
+      {pagina === "usuarios" && hasRole("admin") && <UserManagement />}
     </div>
   );
 }
