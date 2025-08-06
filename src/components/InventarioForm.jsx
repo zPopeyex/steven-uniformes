@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import { useAuth } from "../contexts/AuthContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const InventarioForm = ({ onAgregar, productoEscaneado }) => {
   const [producto, setProducto] = useState({
