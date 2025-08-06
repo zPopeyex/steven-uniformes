@@ -6,7 +6,7 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db, GoogleAuthProvider } from "../firebase/firebaseConfig";
 
 const AuthContext = createContext();
@@ -44,9 +44,14 @@ export const AuthProvider = ({ children }) => {
   const login = (email, password) =>
     signInWithEmailAndPassword(auth, email, password);
 
-  const loginWithGoogle = () => {
+  const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    await setDoc(
+      doc(db, "users", result.user.uid),
+      { role: "Vendedor" },
+      { merge: true }
+    );
   };
 
   const logout = () => signOut(auth);
