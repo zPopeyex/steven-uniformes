@@ -5,12 +5,19 @@ import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
 import Ventas from "./pages/Ventas";
 import UserManagement from "./pages/UserManagement";
+import Login from "./pages/Login.jsx";
+import { useAuth } from "./contexts/AuthContext.jsx";
 
 function App() {
+  const { user } = useAuth();
   const [pagina, setPagina] = useState("inicio");
   const [role, setRole] = useState(
     () => localStorage.getItem("role") || "Admin"
   );
+
+  if (!user) {
+    return <Login />;
+  }
 
   const handleChangeRole = (e) => {
     const newRole = e.target.value;
