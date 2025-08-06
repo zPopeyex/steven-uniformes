@@ -13,7 +13,7 @@ Aplicación web para administrar el flujo completo de uniformes de la empresa. P
 
 ## Configuración
 1. Clonar el repositorio.
-2. Crear un archivo `.env` con las credenciales de Firebase requeridas.
+2. Copiar el archivo `.env.example` a `.env` y completar las credenciales de Firebase correspondientes.
 3. Instalar las dependencias:
    ```bash
    npm install
