@@ -56,10 +56,9 @@ const InventarioForm = ({ onAgregar, productoEscaneado }) => {
       return;
     }
 
-    const total = parseInt(precio) * parseInt(cantidad);
-   // const fecha = new Date().toLocaleDateString("es-CO");
-   // const hora = new Date().toLocaleTimeString("es-CO");
-
+      // const total = parseInt(precio) * parseInt(cantidad);
+      // const fecha = new Date().toLocaleDateString("es-CO");
+      // const hora = new Date().toLocaleTimeString("es-CO");
 
     const productoFinal = {
       ...producto,

@@ -1,47 +1,37 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "../firebase/firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 const Login = () => {
-  const auth = getAuth();
-  const navigate = useNavigate();
+  const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleEmailLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await login(email, password);
       navigate("/");
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error);
-      setErrorMessage("No se pudo iniciar sesión. Verifica tus credenciales.");
+    } catch {
+      setError("No se pudo iniciar sesión. Verifica tus credenciales.");
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogle = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await loginWithGoogle();
       navigate("/");
-    } catch (error) {
-      console.error("Error al iniciar sesión con Google:", error);
-      setErrorMessage(
-        "Error al iniciar sesión con Google. Verifica la configuración de Firebase.",
-      );
+    } catch {
+      setError("Error al iniciar sesión con Google.");
     }
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h2>Iniciar Sesión</h2>
-      <form onSubmit={handleEmailLogin} style={{ marginBottom: 20 }}>
+      <form onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
         <div>
           <input
             type="email"
@@ -60,10 +50,8 @@ const Login = () => {
         </div>
         <button type="submit">Ingresar</button>
       </form>
-      <button onClick={handleGoogleLogin}>Ingresar con Google</button>
-      {errorMessage && (
-        <p style={{ color: "red", marginTop: 20 }}>{errorMessage}</p>
-      )}
+      <button onClick={handleGoogle}>Continuar con Google</button>
+      {error && <p style={{ color: "red", marginTop: 20 }}>{error}</p>}
     </div>
   );
 };
