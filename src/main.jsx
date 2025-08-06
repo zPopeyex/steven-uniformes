@@ -5,16 +5,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import Login from './pages/Login.jsx'
- codex/implement-route-protection-and-role-management
 import PrivateRoute from './components/PrivateRoute.jsx'
-
-import { AuthProvider, useAuth } from './context/AuthContext.jsx'
-
-function PrivateRoute({ children }) {
-  const { user } = useAuth()
-  return user ? children : <Navigate to="/login" />
-}
- main
+import { AuthProvider } from './context/AuthContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
