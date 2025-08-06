@@ -15,7 +15,7 @@ import { db } from "../firebase/firebaseConfig";
 import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
 import Escaner from "../components/Escaner";
-import { useAuth } from "../contexts/AuthContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const Inventario = () => {
   const [inventario, setInventario] = useState([]);
