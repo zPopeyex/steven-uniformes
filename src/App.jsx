@@ -4,9 +4,11 @@ import Inventario from "./pages/Inventario";
 import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
 import Ventas from "./pages/Ventas";
+import UserManagement from "./pages/UserManagement";
 
 function App() {
   const [pagina, setPagina] = useState("inicio");
+  const [userRole] = useState(localStorage.getItem("role") || "Usuario");
 
   return (
     <div style={{ padding: 20 }}>
@@ -27,6 +29,11 @@ function App() {
         💵 Ventas/Encargos
       </button>
         <button onClick={() => setPagina("catalogo")} style={botonEstilo}>🛒 Catálogo de Productos</button>
+        {userRole === "Admin" && (
+          <button onClick={() => setPagina("usuarios")} style={botonEstilo}>
+            👥 Usuarios
+          </button>
+        )}
       </div>
 
       {/* Contenido dinámico según la opción */}
@@ -35,6 +42,7 @@ function App() {
       {pagina === "stock" && <Stock />}
       {pagina === "catalogo" && <Catalogo />}
       {pagina === "ventas" && <Ventas />}
+      {pagina === "usuarios" && userRole === "Admin" && <UserManagement />}
     </div>
   );
 }
