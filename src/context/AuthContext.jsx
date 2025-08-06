@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
       { role: "Vendedor" },
       { merge: true }
     );
+    setRole("Vendedor");
   };
 
   const logout = () => signOut(auth);
