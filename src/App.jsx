@@ -4,7 +4,7 @@ import Inventario from "./pages/Inventario";
 import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
 import Ventas from "./pages/Ventas";
-import UserManagement from "./pages/UserManagement";
+import Users from "./pages/Users";
 
 function App() {
   const [pagina, setPagina] = useState("inicio");
@@ -53,7 +53,7 @@ function App() {
         </button>
         {role === "Admin" && (
           <button onClick={() => setPagina("usuarios")} style={botonEstilo}>
-            👥 Usuarios
+            👥 Gestión de Usuarios
           </button>
         )}
       </div>
@@ -64,7 +64,7 @@ function App() {
       {pagina === "stock" && <Stock />}
       {pagina === "catalogo" && <Catalogo />}
       {pagina === "ventas" && <Ventas role={role} />}
-      {pagina === "usuarios" && role === "Admin" && <UserManagement />}
+      {pagina === "usuarios" && role === "Admin" && <Users />}
     </div>
   );
 }
