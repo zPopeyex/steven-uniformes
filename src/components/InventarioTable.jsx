@@ -3,7 +3,7 @@
 import React from "react";
 import CardTable from './CardTable'; // Ajusta la ruta
 
-const InventarioTable = ({ productos = [], onEliminar }) => {
+const InventarioTable = ({ productos = [], onEliminar, role }) => {
   const convertirFecha = (fechaHora) => {
     if (!fechaHora || !fechaHora.seconds) return "-";
     const date = new Date(fechaHora.seconds * 1000);
@@ -43,7 +43,7 @@ const InventarioTable = ({ productos = [], onEliminar }) => {
           <th>Vr. Total</th>
           <th>Fecha</th>
           <th>Hora</th>
-          <th>Acciones</th>
+          {role === "Admin" && <th>Acciones</th>}
           </tr>
         </thead>
 <tbody>
@@ -69,21 +69,23 @@ const InventarioTable = ({ productos = [], onEliminar }) => {
           <td style={estiloCelda}>{total.toLocaleString("es-CO")}</td>
           <td style={estiloCelda}>{convertirFecha(p.fechaHora)}</td>
           <td style={estiloCelda}>{convertirHora(p.fechaHora)}</td>
-          <td style={estiloCelda}>
-            <button
-              onClick={() => onEliminar(p.id)}
-              style={{
-                backgroundColor: 'red',
-                color: 'white',
-                border: 'none',
-                padding: '5px 10px',
-                borderRadius: '5px',
-                cursor: 'pointer'
-              }}
-            >
-              Eliminar
-            </button>
-          </td>
+          {role === "Admin" && (
+            <td style={estiloCelda}>
+              <button
+                onClick={() => onEliminar(p.id)}
+                style={{
+                  backgroundColor: 'red',
+                  color: 'white',
+                  border: 'none',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
+                  cursor: 'pointer'
+                }}
+              >
+                Eliminar
+              </button>
+            </td>
+          )}
         </tr>
       );
     })}
@@ -93,13 +95,6 @@ const InventarioTable = ({ productos = [], onEliminar }) => {
       </CardTable>
     </div>
   );
-};
-
-const estiloEncabezado = {
-  padding: "10px",
-  backgroundColor: "#f4f4f4",
-  border: "1px solid #ddd",
-  fontWeight: "bold",
 };
 
 const estiloCelda = {

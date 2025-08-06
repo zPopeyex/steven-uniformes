@@ -7,34 +7,60 @@ import Ventas from "./pages/Ventas";
 
 function App() {
   const [pagina, setPagina] = useState("inicio");
+  const [role, setRole] = useState(
+    () => localStorage.getItem("role") || "Admin"
+  );
+
+  const handleChangeRole = (e) => {
+    const newRole = e.target.value;
+    setRole(newRole);
+    localStorage.setItem("role", newRole);
+  };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>🧵 Steven Todo en Uniformes</h1>
+
+      <div style={{ marginBottom: 20 }}>
+        <label htmlFor="rol" style={{ marginRight: 10 }}>
+          Rol:
+        </label>
+        <select id="rol" value={role} onChange={handleChangeRole}>
+          <option value="Admin">Admin</option>
+          <option value="Vendedor">Vendedor</option>
+        </select>
+      </div>
 
       {/* Menú superior */}
       <div style={{ marginBottom: 30 }}>
         <button onClick={() => setPagina("inicio")} style={botonEstilo}>
           🏠 Inicio
         </button>
-        <button onClick={() => setPagina("inventario")} style={botonEstilo}>
-          ➕ Agregar Inventario
-        </button>
+        {role === "Admin" && (
+          <button onClick={() => setPagina("inventario")} style={botonEstilo}>
+            ➕ Agregar Inventario
+          </button>
+        )}
         <button onClick={() => setPagina("stock")} style={botonEstilo}>
           📦 Ver Stock Actual
         </button>
         <button onClick={() => setPagina("ventas")} style={botonEstilo}>
-        💵 Ventas/Encargos
-      </button>
-        <button onClick={() => setPagina("catalogo")} style={botonEstilo}>🛒 Catálogo de Productos</button>
+          💵 Ventas/Encargos
+        </button>
+        <button
+          onClick={() => setPagina("catalogo")}
+          style={botonEstilo}
+        >
+          🛒 Catálogo de Productos
+        </button>
       </div>
 
       {/* Contenido dinámico según la opción */}
       {pagina === "inicio" && <Inicio />}
-      {pagina === "inventario" && <Inventario />}
+      {pagina === "inventario" && <Inventario role={role} />}
       {pagina === "stock" && <Stock />}
       {pagina === "catalogo" && <Catalogo />}
-      {pagina === "ventas" && <Ventas />}
+      {pagina === "ventas" && <Ventas role={role} />}
     </div>
   );
 }
