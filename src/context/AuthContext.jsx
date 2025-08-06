@@ -47,11 +47,15 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
-    await setDoc(
-      doc(db, "users", result.user.uid),
-      { role: "Vendedor" },
-      { merge: true }
-    );
+    const userRef = doc(db, "users", result.user.uid);
+    const snap = await getDoc(userRef);
+    let userRole = "Vendedor";
+    if (!snap.exists() || !snap.data().role) {
+      await setDoc(userRef, { role: userRole }, { merge: true });
+    } else {
+      userRole = snap.data().role;
+    }
+    setRole(userRole);
   };
 
   const logout = () => signOut(auth);
