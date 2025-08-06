@@ -12,6 +12,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -20,6 +21,7 @@ const Login = () => {
       navigate("/");
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
+      setErrorMessage("No se pudo iniciar sesión. Verifica tus credenciales.");
     }
   };
 
@@ -30,6 +32,9 @@ const Login = () => {
       navigate("/");
     } catch (error) {
       console.error("Error al iniciar sesión con Google:", error);
+      setErrorMessage(
+        "Error al iniciar sesión con Google. Verifica la configuración de Firebase.",
+      );
     }
   };
 
@@ -56,6 +61,9 @@ const Login = () => {
         <button type="submit">Ingresar</button>
       </form>
       <button onClick={handleGoogleLogin}>Ingresar con Google</button>
+      {errorMessage && (
+        <p style={{ color: "red", marginTop: 20 }}>{errorMessage}</p>
+      )}
     </div>
   );
 };
