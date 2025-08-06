@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
-const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
+const EncargosTable = ({ encargos, onActualizarEstado }) => {
+  const { hasRole } = useAuth();
   const [encargoExpandido, setEncargoExpandido] = useState(null);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
 
@@ -83,7 +85,7 @@ const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
               <th style={estiloEncabezado}>Fecha</th>
               <th style={estiloEncabezado}>Total</th>
               <th style={estiloEncabezado}>Estado</th>
-              {role === "Admin" && (
+              {hasRole("admin") && (
                 <th style={estiloEncabezado}>Acciones</th>
               )}
             </tr>
@@ -134,7 +136,7 @@ const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
                       {encargo.estado}
                     </span>
                   </td>
-                  {role === "Admin" && (
+                  {hasRole("admin") && (
                     <td style={estiloCelda}>
                       {encargo.estado === "pendiente" && (
                         <>

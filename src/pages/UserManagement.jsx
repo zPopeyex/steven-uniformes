@@ -8,12 +8,13 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
+import { useAuth } from "../contexts/AuthContext.jsx";
 import { db } from "../firebase/firebaseConfig";
 
 const UserManagement = () => {
+  const { hasRole } = useAuth();
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ name: "", role: "Usuario" });
-  const role = localStorage.getItem("role") || "Usuario";
+  const [newUser, setNewUser] = useState({ uid: "", name: "", role: "vendedor" });
 
   useEffect(() => {
     const q = collection(db, "users");
@@ -26,10 +27,12 @@ const UserManagement = () => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!newUser.name.trim()) return;
-    const ref = doc(collection(db, "users"));
-    await setDoc(ref, { name: newUser.name, role: newUser.role });
-    setNewUser({ name: "", role: "Usuario" });
+    if (!newUser.uid.trim()) return;
+    await setDoc(doc(db, "users", newUser.uid), {
+      name: newUser.name,
+      role: newUser.role,
+    });
+    setNewUser({ uid: "", name: "", role: "vendedor" });
   };
 
   const handleRoleChange = async (id, role) => {
@@ -40,7 +43,7 @@ const UserManagement = () => {
     await deleteDoc(doc(db, "users", id));
   };
 
-  if (role !== "Admin") {
+  if (!hasRole("admin")) {
     return <div style={{ padding: 20 }}>Acceso restringido</div>;
   }
 
@@ -49,6 +52,13 @@ const UserManagement = () => {
       <h2>👥 Gestión de Usuarios</h2>
 
       <form onSubmit={handleCreateUser} style={{ marginBottom: 20 }}>
+        <input
+          type="text"
+          value={newUser.uid}
+          onChange={(e) => setNewUser({ ...newUser, uid: e.target.value })}
+          placeholder="UID"
+          style={{ marginRight: 10, padding: 5 }}
+        />
         <input
           type="text"
           value={newUser.name}
@@ -61,8 +71,8 @@ const UserManagement = () => {
           onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
           style={{ marginRight: 10, padding: 5 }}
         >
-          <option value="Usuario">Usuario</option>
-          <option value="Admin">Admin</option>
+          <option value="vendedor">vendedor</option>
+          <option value="admin">admin</option>
         </select>
         <button type="submit" style={{ padding: "5px 10px" }}>
           ➕ Crear Usuario
@@ -72,9 +82,8 @@ const UserManagement = () => {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-              Nombre
-            </th>
+            <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>UID</th>
+            <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>Nombre</th>
             <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
               Rol
             </th>
@@ -82,8 +91,9 @@ const UserManagement = () => {
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
+            {users.map((user) => (
             <tr key={user.id}>
+              <td style={{ padding: "8px 0" }}>{user.id}</td>
               <td style={{ padding: "8px 0" }}>{user.name}</td>
               <td>
                 <select
@@ -91,8 +101,8 @@ const UserManagement = () => {
                   onChange={(e) => handleRoleChange(user.id, e.target.value)}
                   style={{ padding: 5 }}
                 >
-                  <option value="Usuario">Usuario</option>
-                  <option value="Admin">Admin</option>
+                  <option value="vendedor">vendedor</option>
+                  <option value="admin">admin</option>
                 </select>
               </td>
               <td>

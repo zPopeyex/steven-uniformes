@@ -18,7 +18,7 @@ import EncargosTable from "../components/EncargosTable";
 import Escaner from "../components/Escaner";
 import CardTable from "../components/CardTable"; // Ajusta la ruta si es necesario
 
-const Ventas = ({ role }) => {
+const Ventas = () => {
   const [ventas, setVentas] = useState([]);
   const [encargos, setEncargos] = useState([]);
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
@@ -260,7 +260,6 @@ const Ventas = ({ role }) => {
             onActualizarEstado={(id, estado) =>
               handleActualizarEstado(id, estado, "ventas")
             }
-            role={role}
           />
         </>
       ) : (
@@ -269,7 +268,6 @@ const Ventas = ({ role }) => {
           onActualizarEstado={(id, estado) =>
             handleActualizarEstado(id, estado, "encargos")
           }
-          role={role}
         />
       )}
     </div>

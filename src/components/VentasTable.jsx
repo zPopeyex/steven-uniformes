@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { useAuth } from "../contexts/AuthContext.jsx";
 import CardTable from "./CardTable"; // Ajusta la ruta
 
-const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
+const VentasTable = ({ ventas, onActualizarEstado, totalVentas }) => {
+  const { hasRole } = useAuth();
   const [fechasExpandidas, setFechasExpandidas] = useState({});
 
   // Estilos
@@ -219,7 +221,7 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
                                 >
                                   {v.estado || "venta"}
                                 </span>
-                                  {v.estado === "separado" && role === "Admin" && (
+                                  {v.estado === "separado" && hasRole("admin") && (
                                     <button
                                       onClick={() => marcarComoPagado(v.id)}
                                       style={{

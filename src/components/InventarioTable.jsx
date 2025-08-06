@@ -1,9 +1,11 @@
 // 📄 src/components/InventarioTable.jsx
 
 import React from "react";
+import { useAuth } from "../contexts/AuthContext.jsx";
 import CardTable from './CardTable'; // Ajusta la ruta
 
-const InventarioTable = ({ productos = [], onEliminar, role }) => {
+const InventarioTable = ({ productos = [], onEliminar }) => {
+  const { hasRole } = useAuth();
   const convertirFecha = (fechaHora) => {
     if (!fechaHora || !fechaHora.seconds) return "-";
     const date = new Date(fechaHora.seconds * 1000);
@@ -43,7 +45,7 @@ const InventarioTable = ({ productos = [], onEliminar, role }) => {
           <th>Vr. Total</th>
           <th>Fecha</th>
           <th>Hora</th>
-          {role === "Admin" && <th>Acciones</th>}
+          {hasRole("admin") && <th>Acciones</th>}
           </tr>
         </thead>
 <tbody>
@@ -69,7 +71,7 @@ const InventarioTable = ({ productos = [], onEliminar, role }) => {
           <td style={estiloCelda}>{total.toLocaleString("es-CO")}</td>
           <td style={estiloCelda}>{convertirFecha(p.fechaHora)}</td>
           <td style={estiloCelda}>{convertirHora(p.fechaHora)}</td>
-          {role === "Admin" && (
+          {hasRole("admin") && (
             <td style={estiloCelda}>
               <button
                 onClick={() => onEliminar(p.id)}
