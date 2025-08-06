@@ -1,12 +1,43 @@
-# React + Vite
+# Sistema de gestión de uniformes
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web para administrar el flujo completo de uniformes de la empresa. Permite controlar inventario, registrar ventas y gestionar encargos de clientes desde una sola interfaz.
 
-Currently, two official plugins are available:
+## Funcionalidades
+- **Inventario**: alta, baja y modificación de prendas disponibles.
+- **Ventas**: registro de ventas y emisión de códigos QR para los comprobantes.
+- **Encargos**: seguimiento de pedidos y estado de preparación.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Requisitos
+- Node.js 18+
+- npm 9+
 
-## Expanding the ESLint configuration
+## Configuración
+1. Clonar el repositorio.
+2. Crear un archivo `.env` con las credenciales de Firebase requeridas.
+3. Instalar las dependencias:
+   ```bash
+   npm install
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Ejecución
+- Levantar el servidor de desarrollo:
+  ```bash
+  npm run dev
+  ```
+  La aplicación se sirve en [http://localhost:5173](http://localhost:5173).
+
+## Despliegue
+- Generar la build de producción:
+  ```bash
+  npm run build
+  ```
+- Previsualizar la build localmente:
+  ```bash
+  npm run preview
+  ```
+- Para un despliegue en Vercel, use el script:
+  ```bash
+  npm run vercel-build
+  ```
+  y luego suba el directorio `dist/` a su cuenta de Vercel.
+
