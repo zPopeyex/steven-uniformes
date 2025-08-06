@@ -17,13 +17,15 @@ import VentasTable from "../components/VentasTable";
 import EncargosTable from "../components/EncargosTable";
 import Escaner from "../components/Escaner";
 import CardTable from "../components/CardTable"; // Ajusta la ruta si es necesario
+import { useAuth } from "../contexts/AuthContext.jsx";
 
-const Ventas = ({ role }) => {
+const Ventas = () => {
   const [ventas, setVentas] = useState([]);
   const [encargos, setEncargos] = useState([]);
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
   const [productoEscaneado, setProductoEscaneado] = useState(null);
   const [tabActiva, setTabActiva] = useState("ventas");
+  const { role } = useAuth();
 
   // Cargar ventas y encargos al iniciar
   const cargarDatos = async () => {
