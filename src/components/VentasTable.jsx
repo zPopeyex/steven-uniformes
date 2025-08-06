@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import CardTable from "./CardTable"; // Ajusta la ruta
 
-const VentasTable = ({ ventas, onActualizarEstado, totalVentas }) => {
+const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
   const [fechasExpandidas, setFechasExpandidas] = useState({});
 
   // Estilos
@@ -134,7 +134,7 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas }) => {
                   </tr>
 
                   {estaExpandida &&
-                    ventasDelDia.map((v, idx) => (
+                    ventasDelDia.map((v) => (
                       <tr key={v.id} style={{ backgroundColor: "#f9f9f9" }}>
                         <td style={estiloCelda} colSpan={3}>
                           <div
@@ -219,23 +219,23 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas }) => {
                                 >
                                   {v.estado || "venta"}
                                 </span>
-                                {v.estado === "separado" && (
-                                  <button
-                                    onClick={() => marcarComoPagado(v.id)}
-                                    style={{
-                                      marginLeft: "10px",
-                                      padding: "3px 8px",
-                                      backgroundColor: "#4CAF50",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "4px",
-                                      cursor: "pointer",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    Marcar como pagado
-                                  </button>
-                                )}
+                                  {v.estado === "separado" && role === "Admin" && (
+                                    <button
+                                      onClick={() => marcarComoPagado(v.id)}
+                                      style={{
+                                        marginLeft: "10px",
+                                        padding: "3px 8px",
+                                        backgroundColor: "#4CAF50",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "4px",
+                                        cursor: "pointer",
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      Marcar como pagado
+                                    </button>
+                                  )}
                               </div>
                               {v.estado === "separado" && (
                                 <>
