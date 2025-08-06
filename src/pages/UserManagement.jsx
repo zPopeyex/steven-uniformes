@@ -9,11 +9,12 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ name: "", role: "Usuario" });
-  const role = localStorage.getItem("role") || "Usuario";
+  const { role } = useAuth();
 
   useEffect(() => {
     const q = collection(db, "users");

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 const InventarioForm = ({ onAgregar, productoEscaneado }) => {
   const [producto, setProducto] = useState({
@@ -46,29 +47,30 @@ const InventarioForm = ({ onAgregar, productoEscaneado }) => {
     const { name, value } = e.target;
     setProducto((prev) => ({ ...prev, [name]: value }));
   };
+  const { role } = useAuth();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const { colegio, prenda, talla, precio, cantidad } = producto;
+
+    if (role !== "Admin") {
+      alert("Acceso restringido");
+      return;
+    }
 
     if (!colegio || !prenda || !talla || !precio || !cantidad) {
       alert("Completa todos los campos");
       return;
     }
 
-    const total = parseInt(precio) * parseInt(cantidad);
-   // const fecha = new Date().toLocaleDateString("es-CO");
-   // const hora = new Date().toLocaleTimeString("es-CO");
-
-
     const productoFinal = {
       ...producto,
       precio: parseInt(precio),
       cantidad: parseInt(cantidad),
     };
-    
-    onAgregar(productoFinal); 
-};
+
+    onAgregar(productoFinal);
+  };
 
 
   return (

@@ -1,70 +1,87 @@
-import React, { useState } from "react";
+import React from "react";
+import { Link, Routes, Route } from "react-router-dom";
 import Inicio from "./pages/Inicio";
 import Inventario from "./pages/Inventario";
 import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
 import Ventas from "./pages/Ventas";
 import UserManagement from "./pages/UserManagement";
+import { useAuth } from "./contexts/AuthContext.jsx";
+import RoleRoute from "./components/RoleRoute.jsx";
 
 function App() {
-  const [pagina, setPagina] = useState("inicio");
-  const [role, setRole] = useState(
-    () => localStorage.getItem("role") || "Admin"
-  );
-
-  const handleChangeRole = (e) => {
-    const newRole = e.target.value;
-    setRole(newRole);
-    localStorage.setItem("role", newRole);
-  };
+  const { role } = useAuth();
 
   return (
     <div style={{ padding: 20 }}>
       <h1>🧵 Steven Todo en Uniformes</h1>
 
-      <div style={{ marginBottom: 20 }}>
-        <label htmlFor="rol" style={{ marginRight: 10 }}>
-          Rol:
-        </label>
-        <select id="rol" value={role} onChange={handleChangeRole}>
-          <option value="Admin">Admin</option>
-          <option value="Vendedor">Vendedor</option>
-        </select>
-      </div>
-
-      {/* Menú superior */}
-      <div style={{ marginBottom: 30 }}>
-        <button onClick={() => setPagina("inicio")} style={botonEstilo}>
+      <nav style={{ marginBottom: 30 }}>
+        <Link to="/" style={botonEstilo}>
           🏠 Inicio
-        </button>
+        </Link>
         {role === "Admin" && (
-          <button onClick={() => setPagina("inventario")} style={botonEstilo}>
-            ➕ Agregar Inventario
-          </button>
+          <>
+            <Link to="/inventario" style={botonEstilo}>
+              ➕ Agregar Inventario
+            </Link>
+            <Link to="/stock" style={botonEstilo}>
+              📦 Ver Stock Actual
+            </Link>
+            <Link to="/ventas" style={botonEstilo}>
+              💵 Ventas/Encargos
+            </Link>
+            <Link to="/catalogo" style={botonEstilo}>
+              🛒 Catálogo de Productos
+            </Link>
+            <Link to="/usuarios" style={botonEstilo}>
+              👥 Usuarios
+            </Link>
+          </>
         )}
-        <button onClick={() => setPagina("stock")} style={botonEstilo}>
-          📦 Ver Stock Actual
-        </button>
-        <button onClick={() => setPagina("ventas")} style={botonEstilo}>
-          💵 Ventas/Encargos
-        </button>
-        <button onClick={() => setPagina("catalogo")} style={botonEstilo}>
-          🛒 Catálogo de Productos
-        </button>
-        {role === "Admin" && (
-          <button onClick={() => setPagina("usuarios")} style={botonEstilo}>
-            👥 Usuarios
-          </button>
+        {role === "Vendedor" && (
+          <Link to="/ventas" style={botonEstilo}>
+            💵 Ventas/Encargos
+          </Link>
         )}
-      </div>
+      </nav>
 
-      {/* Contenido dinámico según la opción */}
-      {pagina === "inicio" && <Inicio />}
-      {pagina === "inventario" && <Inventario role={role} />}
-      {pagina === "stock" && <Stock />}
-      {pagina === "catalogo" && <Catalogo />}
-      {pagina === "ventas" && <Ventas role={role} />}
-      {pagina === "usuarios" && role === "Admin" && <UserManagement />}
+      <Routes>
+        <Route path="/" element={<Inicio />} />
+        <Route
+          path="/inventario"
+          element={
+            <RoleRoute roles={["Admin"]}>
+              <Inventario />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/stock"
+          element={
+            <RoleRoute roles={["Admin"]}>
+              <Stock />
+            </RoleRoute>
+          }
+        />
+        <Route path="/ventas" element={<Ventas />} />
+        <Route
+          path="/catalogo"
+          element={
+            <RoleRoute roles={["Admin"]}>
+              <Catalogo />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <RoleRoute roles={["Admin"]}>
+              <UserManagement />
+            </RoleRoute>
+          }
+        />
+      </Routes>
     </div>
   );
 }
