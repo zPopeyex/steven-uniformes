@@ -6,7 +6,7 @@ import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
 import Ventas from "./pages/Ventas";
 import UserManagement from "./pages/UserManagement";
-import { useAuth } from "./contexts/AuthContext.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 
 function App() {

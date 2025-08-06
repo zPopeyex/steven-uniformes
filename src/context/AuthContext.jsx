@@ -6,16 +6,37 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import { auth, GoogleAuthProvider } from "../firebase/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db, GoogleAuthProvider } from "../firebase/firebaseConfig";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdTokenResult(true);
+          const claimRole = token?.claims?.role;
+
+          if (claimRole) {
+            setRole(claimRole);
+          } else {
+            const snap = await getDoc(doc(db, "users", currentUser.uid));
+            setRole(snap.exists() ? snap.data().role : null);
+          }
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+          setRole(null);
+        }
+      } else {
+        setRole(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -34,6 +55,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        role,
         login,
         loginWithGoogle,
         logout,
