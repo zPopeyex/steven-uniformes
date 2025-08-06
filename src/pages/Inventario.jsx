@@ -15,11 +15,13 @@ import { db } from "../firebase/firebaseConfig";
 import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
 import Escaner from "../components/Escaner";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
-const Inventario = ({ role }) => {
+const Inventario = () => {
   const [inventario, setInventario] = useState([]);
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
   const [productoInicial, setProductoInicial] = useState(null);
+  const { role } = useAuth();
 
   const cargarInventario = async () => {
     const snap = await getDocs(collection(db, "inventario"));
@@ -53,6 +55,10 @@ const Inventario = ({ role }) => {
 
   // ✅ Agregar al inventario y también al stock_actual
   const handleAgregarInventario = async (productoFinal) => {
+    if (role !== "Admin") {
+      alert("Acceso restringido");
+      return;
+    }
     try {
       await addDoc(collection(db, "inventario"), {
         ...productoFinal,
@@ -93,6 +99,10 @@ const Inventario = ({ role }) => {
 
   // ✅ Eliminar de inventario y RESTAR del stock_actual
   const handleEliminar = async (id) => {
+    if (role !== "Admin") {
+      alert("Acceso restringido");
+      return;
+    }
     try {
       const docRef = doc(db, "inventario", id);
       const docSnap = await getDoc(docRef);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 
 const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
@@ -91,12 +91,6 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     }
   }, [productoEscaneado]);
 
-  const calcularTotalesCarrito = () => {
-    const total = carrito.reduce((sum, item) => sum + (item.total || 0), 0);
-    const abono = carrito.reduce((sum, item) => sum + (item.abono || 0), 0);
-    const saldo = total - abono;
-    return { total, abono, saldo };
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -207,10 +201,6 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     const exito = await onAgregar(carrito);
     if (exito) setCarrito([]);
   };
-
-  // === FUNCION PARA REGISTRAR EL ENCARGO ===
-  const limpiarObjeto = (obj) =>
-    Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
 
   // Registrar el encargo correctamente
   const registrarEncargo = async () => {
