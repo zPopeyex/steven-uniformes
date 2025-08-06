@@ -17,7 +17,7 @@ import VentasTable from "../components/VentasTable";
 import EncargosTable from "../components/EncargosTable";
 import Escaner from "../components/Escaner";
 import CardTable from "../components/CardTable"; // Ajusta la ruta si es necesario
-import { useAuth } from "../contexts/AuthContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const Ventas = () => {
   const [ventas, setVentas] = useState([]);
