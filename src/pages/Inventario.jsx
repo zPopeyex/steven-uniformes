@@ -16,7 +16,7 @@ import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
 import Escaner from "../components/Escaner";
 
-const Inventario = () => {
+const Inventario = ({ role }) => {
   const [inventario, setInventario] = useState([]);
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
   const [productoInicial, setProductoInicial] = useState(null);
@@ -134,27 +134,35 @@ const Inventario = () => {
     <div style={{ padding: 20 }}>
       <h2>📦 Agregar al Inventario</h2>
 
-      <button
-        onClick={() => setMostrarEscaner((prev) => !prev)}
-        style={{
-          padding: "10px 20px",
-          marginBottom: 10,
-          borderRadius: 8,
-          backgroundColor: "#cde",
-          cursor: "pointer",
-        }}
-      >
-        {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
-      </button>
+      {role === "Admin" && (
+        <>
+          <button
+            onClick={() => setMostrarEscaner((prev) => !prev)}
+            style={{
+              padding: "10px 20px",
+              marginBottom: 10,
+              borderRadius: 8,
+              backgroundColor: "#cde",
+              cursor: "pointer",
+            }}
+          >
+            {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
+          </button>
 
-      {mostrarEscaner && <Escaner onScan={handleQRDetectado} />}
+          {mostrarEscaner && <Escaner onScan={handleQRDetectado} />}
 
-      <InventarioForm
-        productoEscaneado={productoInicial}
-        onAgregar={handleAgregarInventario}
+          <InventarioForm
+            productoEscaneado={productoInicial}
+            onAgregar={handleAgregarInventario}
+          />
+        </>
+      )}
+
+      <InventarioTable
+        productos={inventario}
+        onEliminar={handleEliminar}
+        role={role}
       />
-
-      <InventarioTable productos={inventario} onEliminar={handleEliminar} />
     </div>
   );
 };

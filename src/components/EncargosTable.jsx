@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const EncargosTable = ({ encargos, onActualizarEstado }) => {
+const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
   const [encargoExpandido, setEncargoExpandido] = useState(null);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
 
@@ -77,14 +77,16 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
         }}
       >
         <thead>
-          <tr>
-            <th style={estiloEncabezado}>N° Factura</th>
-            <th style={estiloEncabezado}>Cliente</th>
-            <th style={estiloEncabezado}>Fecha</th>
-            <th style={estiloEncabezado}>Total</th>
-            <th style={estiloEncabezado}>Estado</th>
-            <th style={estiloEncabezado}>Acciones</th>
-          </tr>
+            <tr>
+              <th style={estiloEncabezado}>N° Factura</th>
+              <th style={estiloEncabezado}>Cliente</th>
+              <th style={estiloEncabezado}>Fecha</th>
+              <th style={estiloEncabezado}>Total</th>
+              <th style={estiloEncabezado}>Estado</th>
+              {role === "Admin" && (
+                <th style={estiloEncabezado}>Acciones</th>
+              )}
+            </tr>
         </thead>
         <tbody>
           {encargos.length > 0 ? (
@@ -132,32 +134,34 @@ const EncargosTable = ({ encargos, onActualizarEstado }) => {
                       {encargo.estado}
                     </span>
                   </td>
-                  <td style={estiloCelda}>
-                    {encargo.estado === "pendiente" && (
-                      <>
-                        <button
-                          onClick={() => handleCompletarEncargo(encargo.id)}
-                          style={{
-                            ...estiloBoton,
-                            backgroundColor: "#4CAF50",
-                            color: "white",
-                          }}
-                        >
-                          Completar
-                        </button>
-                        <button
-                          onClick={() => handleCancelarEncargo(encargo.id)}
-                          style={{
-                            ...estiloBoton,
-                            backgroundColor: "#f44336",
-                            color: "white",
-                          }}
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    )}
-                  </td>
+                  {role === "Admin" && (
+                    <td style={estiloCelda}>
+                      {encargo.estado === "pendiente" && (
+                        <>
+                          <button
+                            onClick={() => handleCompletarEncargo(encargo.id)}
+                            style={{
+                              ...estiloBoton,
+                              backgroundColor: "#4CAF50",
+                              color: "white",
+                            }}
+                          >
+                            Completar
+                          </button>
+                          <button
+                            onClick={() => handleCancelarEncargo(encargo.id)}
+                            style={{
+                              ...estiloBoton,
+                              backgroundColor: "#f44336",
+                              color: "white",
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  )}
                 </tr>
                 {encargoExpandido === encargo.id && (
                   <tr>
