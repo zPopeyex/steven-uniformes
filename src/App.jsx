@@ -11,6 +11,9 @@ import RoleRoute from "./components/RoleRoute.jsx";
 
 function App() {
   const { role } = useAuth();
+  if (role === null) {
+    return <div>Cargando...</div>;
+  }
 
   return (
     <div style={{ padding: 20 }}>
