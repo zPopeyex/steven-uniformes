@@ -13,6 +13,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Simple validation to help developers identify missing configuration values.
+// An invalid or missing API key results in a 400 response from Firebase.
+Object.entries(firebaseConfig).forEach(([key, value]) => {
+  if (!value) {
+    console.warn(
+      `Firebase configuration for ${key} is missing. Check your environment variables.`,
+    );
+  }
+});
+
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 
