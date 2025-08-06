@@ -79,12 +79,6 @@ const Catalogo = () => {
     setProductos(colegiosArray);
   };
 
-  const toggleExpandirProducto = (productoKey) => {
-    setProductosExpandidos((prev) => ({
-      ...prev,
-      [productoKey]: !prev[productoKey],
-    }));
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
