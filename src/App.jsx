@@ -10,41 +10,60 @@ import { useAuth } from "./context/AuthContext.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 
 function App() {
-  const { role } = useAuth();
+  const { user, role, permissions, logout } = useAuth();
   if (role === null) {
     return <div>Cargando...</div>;
   }
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>🧵 Steven Todo en Uniformes</h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h1>🧵 Steven Todo en Uniformes</h1>
+        {user && (
+          <div>
+            <span style={{ marginRight: 10 }}>
+              {user.displayName || user.email} ({role})
+            </span>
+            <button onClick={logout} style={botonEstilo}>
+              Cerrar sesión
+            </button>
+          </div>
+        )}
+      </div>
 
       <nav style={{ marginBottom: 30 }}>
         <Link to="/" style={botonEstilo}>
           🏠 Inicio
         </Link>
-        {role === "Admin" && (
-          <>
-            <Link to="/inventario" style={botonEstilo}>
-              ➕ Agregar Inventario
-            </Link>
-            <Link to="/stock" style={botonEstilo}>
-              📦 Ver Stock Actual
-            </Link>
-            <Link to="/ventas" style={botonEstilo}>
-              💵 Ventas/Encargos
-            </Link>
-            <Link to="/catalogo" style={botonEstilo}>
-              🛒 Catálogo de Productos
-            </Link>
-            <Link to="/usuarios" style={botonEstilo}>
-              👥 Usuarios
-            </Link>
-          </>
+        {permissions.includes("inventario") && (
+          <Link to="/inventario" style={botonEstilo}>
+            ➕ Agregar Inventario
+          </Link>
         )}
-        {role === "Vendedor" && (
+        {permissions.includes("stock") && (
+          <Link to="/stock" style={botonEstilo}>
+            📦 Ver Stock Actual
+          </Link>
+        )}
+        {permissions.includes("ventas") && (
           <Link to="/ventas" style={botonEstilo}>
             💵 Ventas/Encargos
+          </Link>
+        )}
+        {permissions.includes("catalogo") && (
+          <Link to="/catalogo" style={botonEstilo}>
+            🛒 Catálogo de Productos
+          </Link>
+        )}
+        {permissions.includes("usuarios") && (
+          <Link to="/usuarios" style={botonEstilo}>
+            👥 Usuarios
           </Link>
         )}
       </nav>
@@ -54,7 +73,7 @@ function App() {
         <Route
           path="/inventario"
           element={
-            <RoleRoute roles={["Admin"]}>
+            <RoleRoute requiredPermissions={["inventario"]}>
               <Inventario />
             </RoleRoute>
           }
@@ -62,16 +81,23 @@ function App() {
         <Route
           path="/stock"
           element={
-            <RoleRoute roles={["Admin"]}>
+            <RoleRoute requiredPermissions={["stock"]}>
               <Stock />
             </RoleRoute>
           }
         />
-        <Route path="/ventas" element={<Ventas />} />
+        <Route
+          path="/ventas"
+          element={
+            <RoleRoute requiredPermissions={["ventas"]}>
+              <Ventas />
+            </RoleRoute>
+          }
+        />
         <Route
           path="/catalogo"
           element={
-            <RoleRoute roles={["Admin"]}>
+            <RoleRoute requiredPermissions={["catalogo"]}>
               <Catalogo />
             </RoleRoute>
           }
@@ -79,7 +105,7 @@ function App() {
         <Route
           path="/usuarios"
           element={
-            <RoleRoute roles={["Admin"]}>
+            <RoleRoute requiredPermissions={["usuarios"]}>
               <UserManagement />
             </RoleRoute>
           }
