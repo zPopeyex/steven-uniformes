@@ -211,6 +211,7 @@ input:checked + .slider:before {
   transform: translateX(20px);
 }
 
+
 /* Global spinner overlay */
 .global-spinner-overlay {
   position: fixed;
@@ -224,3 +225,4 @@ input:checked + .slider:before {
   background: rgba(255, 255, 255, 0.6);
   z-index: 1000;
 }
+

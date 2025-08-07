@@ -10,7 +10,11 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext.jsx";
+
 import { useLoading } from "../context/LoadingContext.jsx";
+
+import Spinner from "../components/Spinner.jsx";
+
 
 const OPTION_LIST = [
   { key: "inventario", label: "Inventario" },
@@ -28,8 +32,13 @@ const UserManagement = () => {
     role: "Usuario",
     permissions: [],
   });
+
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+
   const { permissions } = useAuth();
   const { showLoading, hideLoading } = useLoading();
 
@@ -43,7 +52,11 @@ const UserManagement = () => {
         active: d.data().active !== false,
       }));
       setUsers(usuarios);
+
       hideLoading();
+
+      setLoading(false);
+
     });
     return () => unsubscribe();
   }, [showLoading, hideLoading]);
@@ -78,6 +91,9 @@ const UserManagement = () => {
     showLoading();
     await updateDoc(doc(db, "users", id), { active: !current });
     hideLoading();
+
+    await updateDoc(doc(db, "users", id), { active: !current });
+
   };
 
   const handleDelete = async (id) => {
@@ -219,6 +235,88 @@ const UserManagement = () => {
           })}
         </tbody>
       </table>
+      {loading ? (
+        <Spinner />
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Nombre
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Correo
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Rol
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Permisos
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Estado
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc" }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => {
+              const displayName =
+                user.name || user.nickname || user.email || "Sin nombre";
+              const displayEmail = user.email || "Sin correo";
+              const roleClass = `badge ${
+                (user.role || "usuario")
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace("ñ", "n")
+              }`;
+              return (
+                <tr key={user.id}>
+                  <td style={{ padding: "8px 0" }}>{displayName}</td>
+                  <td style={{ padding: "8px 0" }}>{displayEmail}</td>
+                  <td>
+                    <span className={roleClass}>{user.role}</span>
+                  </td>
+                  <td>
+                    {(user.permissions || []).map((perm) => (
+                      <span key={perm} className="chip">
+                        {
+                          OPTION_LIST.find((o) => o.key === perm)?.label || perm
+                        }
+                      </span>
+                    ))}
+                  </td>
+                  <td>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={user.active}
+                        onChange={() => handleToggleActive(user.id, user.active)}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => handleDelete(user.id)}
+                      style={{
+                        color: "white",
+                        backgroundColor: "red",
+                        padding: "5px 10px",
+                        border: "none",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
