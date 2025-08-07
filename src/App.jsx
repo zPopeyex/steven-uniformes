@@ -10,7 +10,7 @@ import { useAuth } from "./context/AuthContext.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 
 function App() {
-  const { user, role, permissions, logout } = useAuth();
+  const { user, role, permissions, logout, nickname } = useAuth();
   if (role === null) {
     return <div>Cargando...</div>;
   }
@@ -28,7 +28,8 @@ function App() {
         {user && (
           <div>
             <span style={{ marginRight: 10 }}>
-              {user.displayName || user.email} ({role})
+              {user.displayName || user.email} ({role}
+              {nickname ? ` - ${nickname}` : ""})
             </span>
             <button onClick={logout} style={botonEstilo}>
               Cerrar sesión
