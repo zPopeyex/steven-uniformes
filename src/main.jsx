@@ -7,23 +7,26 @@ import App from './App.jsx'
 import Login from './pages/Login.jsx'
 import PrivateRoute from './components/PrivateRoute.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { LoadingProvider } from './context/LoadingContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/*"
-            element={
-              <PrivateRoute>
-                <App />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
-      </AuthProvider>
+      <LoadingProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/*"
+              element={
+                <PrivateRoute>
+                  <App />
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </LoadingProvider>
     </BrowserRouter>
   </StrictMode>,
 )
