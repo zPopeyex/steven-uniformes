@@ -14,6 +14,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [permissions, setPermissions] = useState([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -21,21 +22,18 @@ export const AuthProvider = ({ children }) => {
 
       if (currentUser) {
         try {
-          const token = await currentUser.getIdTokenResult(true);
-          const claimRole = token?.claims?.role;
-
-          if (claimRole) {
-            setRole(claimRole);
-          } else {
-            const snap = await getDoc(doc(db, "users", currentUser.uid));
-            setRole(snap.exists() ? snap.data().role : null);
-          }
+          const snap = await getDoc(doc(db, "users", currentUser.uid));
+          const data = snap.exists() ? snap.data() : {};
+          setRole(data.role ?? null);
+          setPermissions(data.permissions ?? []);
         } catch (error) {
-          console.error("Error fetching user role:", error);
+          console.error("Error fetching user data:", error);
           setRole(null);
+          setPermissions([]);
         }
       } else {
         setRole(null);
+        setPermissions([]);
       }
     });
     return () => unsubscribe();
@@ -50,12 +48,19 @@ const loginWithGoogle = async () => {
   const userRef = doc(db, "users", result.user.uid);
   const snap = await getDoc(userRef);
   let userRole = "Vendedor";
+  let userPermissions = ["ventas"];
   if (!snap.exists() || !snap.data().role) {
-    await setDoc(userRef, { role: userRole }, { merge: true });
+    await setDoc(
+      userRef,
+      { role: userRole, permissions: userPermissions },
+      { merge: true }
+    );
   } else {
     userRole = snap.data().role;
+    userPermissions = snap.data().permissions || [];
   }
   setRole(userRole);
+  setPermissions(userPermissions);
 };
 
 
@@ -66,6 +71,7 @@ const loginWithGoogle = async () => {
       value={{
         user,
         role,
+        permissions,
         login,
         loginWithGoogle,
         logout,
