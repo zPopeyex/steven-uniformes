@@ -10,7 +10,7 @@ import { useAuth } from "./context/AuthContext.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 
 function App() {
-  const { user, role, permissions, logout, nickname } = useAuth();
+  const { user, role, permissions, logout, name } = useAuth();
   if (role === null) {
     return <div>Cargando...</div>;
   }
@@ -26,10 +26,16 @@ function App() {
       >
         <h1>🧵 Steven Todo en Uniformes</h1>
         {user && (
-          <div>
-            <span style={{ marginRight: 10 }}>
-              {user.displayName || user.email} ({role}
-              {nickname ? ` - ${nickname}` : ""})
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            {user.photoURL && (
+              <img
+                src={user.photoURL}
+                alt="avatar"
+                style={{ width: 32, height: 32, borderRadius: "50%" }}
+              />
+            )}
+            <span style={{ fontWeight: 600 }}>
+              Bienvenido, {name || user.displayName || user.email} ({role})
             </span>
             <button onClick={logout} style={botonEstilo}>
               Cerrar sesión
