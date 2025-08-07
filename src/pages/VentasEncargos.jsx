@@ -19,12 +19,13 @@ import Escaner from "../components/Escaner";
 import CardTable from "../components/CardTable"; // Ajusta la ruta si es necesario
 import { useAuth } from "../context/AuthContext.jsx";
 
-const Ventas = () => {
+const VentasEncargos = () => {
   const [ventas, setVentas] = useState([]);
   const [encargos, setEncargos] = useState([]);
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
   const [productoEscaneado, setProductoEscaneado] = useState(null);
   const [tabActiva, setTabActiva] = useState("ventas");
+  const [totalVentas, setTotalVentas] = useState(0);
   const { role } = useAuth();
 
   // Cargar ventas y encargos al iniciar
@@ -50,6 +51,26 @@ const Ventas = () => {
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  useEffect(() => {
+    setTotalVentas(
+      ventas.reduce((sum, v) => sum + v.precio * v.cantidad, 0)
+    );
+  }, [ventas]);
+
+  useEffect(() => {
+    const btns = document.querySelectorAll(".sales-tab-btn");
+    btns.forEach((btn) => {
+      btn.classList.toggle(
+        "active",
+        btn.dataset.salesTab === `${tabActiva}-tab`
+      );
+    });
+    const contents = document.querySelectorAll(".sales-tab-content");
+    contents.forEach((c) => {
+      c.style.display = c.id === `${tabActiva}-tab` ? "block" : "none";
+    });
+  }, [tabActiva]);
 
   // Escanear QR
   const handleQRDetectado = (codigo) => {
@@ -197,75 +218,56 @@ const Ventas = () => {
     }
   };
   // Calcula el total de ventas
-  const totalVentas = ventas.reduce((sum, v) => sum + v.precio * v.cantidad, 0);
   return (
-    <div style={{ padding: 20 }}>
-      <h2>💰 Gestión de Ventas y Encargos</h2>
-
-      <button
-        onClick={() => setMostrarEscaner(!mostrarEscaner)}
-        style={{
-          backgroundColor: "#4CAF50",
-          color: "white",
-          padding: "10px",
-          marginBottom: "20px",
-          borderRadius: "4px",
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
-      </button>
+    <div className="sales-card">
+      <header className="card-header">
+        <h2 className="card-title">
+          <span className="icon">💰</span> Gestión de Ventas y Encargos
+        </h2>
+        <button
+          onClick={() => setMostrarEscaner(!mostrarEscaner)}
+          className="btn-primary"
+        >
+          {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
+        </button>
+      </header>
 
       {mostrarEscaner && <Escaner onScan={handleQRDetectado} />}
 
-      <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+      <div className="sales-tab-controls">
         <button
+          className="sales-tab-btn active"
+          data-sales-tab="ventas-tab"
           onClick={() => setTabActiva("ventas")}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: tabActiva === "ventas" ? "#2196F3" : "#e0e0e0",
-            color: tabActiva === "ventas" ? "white" : "black",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
         >
           Ventas
         </button>
         <button
+          className="sales-tab-btn"
+          data-sales-tab="encargos-tab"
           onClick={() => setTabActiva("encargos")}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: tabActiva === "encargos" ? "#2196F3" : "#e0e0e0",
-            color: tabActiva === "encargos" ? "white" : "black",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
         >
           Encargos
         </button>
       </div>
 
-      {tabActiva === "ventas" ? (
-        <>
-          <VentasForm
-            productoEscaneado={productoEscaneado}
-            onAgregar={handleAgregarVenta}
-            onAgregarEncargo={handleAgregarEncargo}
-          />
+      <div className="sales-tab-content" id="ventas-tab">
+        <VentasForm
+          productoEscaneado={productoEscaneado}
+          onAgregar={handleAgregarVenta}
+          onAgregarEncargo={handleAgregarEncargo}
+        />
 
-          <VentasTable
-            ventas={ventas}
-            totalVentas={totalVentas}
-            onActualizarEstado={(id, estado) =>
-              handleActualizarEstado(id, estado, "ventas")
-            }
-            role={role}
-          />
-        </>
-      ) : (
+        <VentasTable
+          ventas={ventas}
+          totalVentas={totalVentas}
+          onActualizarEstado={(id, estado) =>
+            handleActualizarEstado(id, estado, "ventas")
+          }
+          role={role}
+        />
+      </div>
+      <div className="sales-tab-content" id="encargos-tab">
         <EncargosTable
           encargos={encargos}
           onActualizarEstado={(id, estado) =>
@@ -273,9 +275,9 @@ const Ventas = () => {
           }
           role={role}
         />
-      )}
+      </div>
     </div>
   );
 };
 
-export default Ventas;
+export default VentasEncargos;
