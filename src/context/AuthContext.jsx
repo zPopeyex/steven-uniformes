@@ -15,7 +15,19 @@ const DEFAULT_PERMISSIONS = {
   Usuario: [],
 };
 
-const getDefaultPermissions = (userRole) => DEFAULT_PERMISSIONS[userRole] ?? [];
+const normalizeRole = (role) => {
+  if (!role) return null;
+  const lowered = role.toLowerCase();
+  if (lowered === "admin") return "Admin";
+  if (lowered === "vendedor") return "Vendedor";
+  if (lowered === "usuario") return "Usuario";
+  return role;
+};
+
+const getDefaultPermissions = (userRole) => {
+  const normalized = normalizeRole(userRole);
+  return DEFAULT_PERMISSIONS[normalized] ?? [];
+};
 
 const AuthContext = createContext();
 
@@ -32,11 +44,25 @@ export const AuthProvider = ({ children }) => {
         try {
           const snap = await getDoc(doc(db, "users", currentUser.uid));
           const data = snap.exists() ? snap.data() : {};
-          const userRole = data.role ?? null;
-          const userPermissions =
-            data.permissions && data.permissions.length > 0
-              ? data.permissions
-              : getDefaultPermissions(userRole);
+          const userRole = normalizeRole(data.role);
+          let userPermissions = data.permissions;
+
+          if (userRole === "Admin") {
+            userPermissions = DEFAULT_PERMISSIONS.Admin;
+            if (
+              !data.permissions ||
+              data.permissions.length !== DEFAULT_PERMISSIONS.Admin.length
+            ) {
+              await setDoc(
+                doc(db, "users", currentUser.uid),
+                { role: userRole, permissions: userPermissions },
+                { merge: true }
+              );
+            }
+          } else if (!userPermissions || userPermissions.length === 0) {
+            userPermissions = getDefaultPermissions(userRole);
+          }
+
           setRole(userRole);
           setPermissions(userPermissions);
         } catch (error) {
@@ -60,10 +86,24 @@ export const AuthProvider = ({ children }) => {
     const result = await signInWithPopup(auth, provider);
     const userRef = doc(db, "users", result.user.uid);
     const snap = await getDoc(userRef);
-    let userRole = snap.exists() ? snap.data().role || "Vendedor" : "Vendedor";
+    let userRole = snap.exists() ? normalizeRole(snap.data().role) : "Vendedor";
+    userRole = userRole || "Vendedor";
     let userPermissions = snap.exists() ? snap.data().permissions : undefined;
 
-    if (!snap.exists()) {
+    if (userRole === "Admin") {
+      userPermissions = DEFAULT_PERMISSIONS.Admin;
+      if (
+        !snap.exists() ||
+        !snap.data().permissions ||
+        snap.data().permissions.length !== DEFAULT_PERMISSIONS.Admin.length
+      ) {
+        await setDoc(
+          userRef,
+          { role: userRole, permissions: userPermissions },
+          { merge: true }
+        );
+      }
+    } else if (!snap.exists()) {
       userPermissions = getDefaultPermissions(userRole);
       await setDoc(
         userRef,
