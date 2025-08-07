@@ -36,52 +36,57 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [permissions, setPermissions] = useState([]);
 
- useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
     setUser(currentUser);
 
-    if (currentUser) {
-      try {
-        const snap = await getDoc(doc(db, "users", currentUser.uid));
-        const data = snap.exists() ? snap.data() : {};
-        let userRole = normalizeRole(data.role);
-        let userPermissions = data.permissions;
+    const handleUser = async () => {
+      if (currentUser) {
+        try {
+          const snap = await getDoc(doc(db, "users", currentUser.uid));
+          const data = snap.exists() ? snap.data() : {};
+          let userRole = normalizeRole(data.role);
+          let userPermissions = data.permissions;
 
-        if (userRole === "Admin") {
-          userPermissions = DEFAULT_PERMISSIONS.Admin;
-          if (
-            !data.permissions ||
-            data.permissions.length !== DEFAULT_PERMISSIONS.Admin.length
-          ) {
+          if (userRole === "Admin") {
+            userPermissions = DEFAULT_PERMISSIONS.Admin;
+            if (
+              !data.permissions ||
+              data.permissions.length !== DEFAULT_PERMISSIONS.Admin.length
+            ) {
+              await setDoc(
+                doc(db, "users", currentUser.uid),
+                { role: userRole, permissions: userPermissions },
+                { merge: true }
+              );
+            }
+          } else if (!userPermissions || userPermissions.length === 0) {
+            userPermissions = getDefaultPermissions(userRole);
             await setDoc(
               doc(db, "users", currentUser.uid),
               { role: userRole, permissions: userPermissions },
               { merge: true }
             );
           }
-        } else if (!userPermissions || userPermissions.length === 0) {
-          userPermissions = getDefaultPermissions(userRole);
-          await setDoc(
-            doc(db, "users", currentUser.uid),
-            { role: userRole, permissions: userPermissions },
-            { merge: true }
-          );
-        }
 
-        setRole(userRole);
-        setPermissions(userPermissions);
-      } catch (error) {
-        console.error("Error fetching user data:", error);
+          setRole(userRole);
+          setPermissions(userPermissions);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          setRole(null);
+          setPermissions([]);
+        }
+      } else {
         setRole(null);
         setPermissions([]);
       }
-    } else {
-      setRole(null);
-      setPermissions([]);
-    }
+    };
+
+    handleUser();
   });
   return () => unsubscribe();
 }, []);
+
 
   const login = (email, password) =>
   signInWithEmailAndPassword(auth, email, password);
