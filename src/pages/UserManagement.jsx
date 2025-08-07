@@ -1,4 +1,3 @@
-// 📄 src/pages/UserManagement.jsx
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -10,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useLoading } from "../context/LoadingContext.jsx";
 import Spinner from "../components/Spinner.jsx";
 
 const OPTION_LIST = [
@@ -28,11 +28,15 @@ const UserManagement = () => {
     role: "Usuario",
     permissions: [],
   });
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const { permissions } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
 
   useEffect(() => {
+    setLoading(true);
     const q = collection(db, "users");
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const usuarios = snapshot.docs.map((d) => ({
@@ -49,6 +53,7 @@ const UserManagement = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!newUser.name.trim()) return;
+    showLoading();
     const ref = doc(collection(db, "users"));
     await setDoc(ref, {
       name: newUser.name,
@@ -57,8 +62,45 @@ const UserManagement = () => {
       permissions: newUser.permissions,
       active: true,
     });
+    hideLoading();
     setNewUser({ name: "", email: "", role: "Usuario", permissions: [] });
     setShowModal(false);
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    showLoading();
+    await updateDoc(doc(db, "users", editingUser.id), {
+      role: editingUser.role,
+      permissions: editingUser.permissions,
+    });
+    hideLoading();
+    setEditingUser(null);
+    setShowModal(false);
+  };
+
+  const handleToggleActive = async (id, current) => {
+    showLoading();
+    await updateDoc(doc(db, "users", id), { active: !current });
+    hideLoading();
+  };
+
+  const handleDelete = async (id) => {
+    showLoading();
+    await deleteDoc(doc(db, "users", id));
+    hideLoading();
+  };
+
+  const openEditUser = (user) => {
+    setEditingUser({
+      id: user.id,
+      name: user.name || "",
+      email: user.email || "",
+      role: user.role || "Usuario",
+      permissions: user.permissions || [],
+    });
+    setShowModal(true);
   };
 
   const toggleNewUserPermission = (option) => {
@@ -70,12 +112,18 @@ const UserManagement = () => {
     });
   };
 
-  const handleToggleActive = async (id, current) => {
-    await updateDoc(doc(db, "users", id), { active: !current });
+  const toggleEditPermission = (option) => {
+    setEditingUser((prev) => {
+      const perms = prev.permissions.includes(option)
+        ? prev.permissions.filter((p) => p !== option)
+        : [...prev.permissions, option];
+      return { ...prev, permissions: perms };
+    });
   };
 
-  const handleDelete = async (id) => {
-    await deleteDoc(doc(db, "users", id));
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingUser(null);
   };
 
   if (!permissions.includes("usuarios")) {
@@ -85,8 +133,13 @@ const UserManagement = () => {
   return (
     <div style={{ padding: 20 }}>
       <h2>👥 Gestión de Usuarios</h2>
-
-      <button onClick={() => setShowModal(true)} style={{ marginBottom: 20 }}>
+      <button
+        onClick={() => {
+          setShowModal(true);
+          setEditingUser(null);
+        }}
+        style={{ marginBottom: 20 }}
+      >
         ➕ Crear Usuario
       </button>
 
@@ -119,12 +172,10 @@ const UserManagement = () => {
               const displayName =
                 user.name || user.nickname || user.email || "Sin nombre";
               const displayEmail = user.email || "Sin correo";
-              const roleClass = `badge ${
-                (user.role || "usuario")
-                  .toLowerCase()
-                  .replace(/\s+/g, "-")
-                  .replace("ñ", "n")
-              }`;
+              const roleClass = `badge ${(user.role || "usuario")
+                .toLowerCase()
+                .replace(/\s+/g, "-")
+                .replace("ñ", "n")}`;
               return (
                 <tr key={user.id}>
                   <td style={{ padding: "8px 0" }}>{displayName}</td>
@@ -135,9 +186,7 @@ const UserManagement = () => {
                   <td>
                     {(user.permissions || []).map((perm) => (
                       <span key={perm} className="chip">
-                        {
-                          OPTION_LIST.find((o) => o.key === perm)?.label || perm
-                        }
+                        {OPTION_LIST.find((o) => o.key === perm)?.label || perm}
                       </span>
                     ))}
                   </td>
@@ -152,6 +201,20 @@ const UserManagement = () => {
                     </label>
                   </td>
                   <td>
+                    <button
+                      onClick={() => openEditUser(user)}
+                      style={{
+                        marginRight: 8,
+                        color: "white",
+                        backgroundColor: "#3b82f6",
+                        padding: "5px 10px",
+                        border: "none",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Editar
+                    </button>
                     <button
                       onClick={() => handleDelete(user.id)}
                       style={{
@@ -173,28 +236,51 @@ const UserManagement = () => {
         </table>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+      {(showModal || editingUser) && (
+        <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Crear Usuario</h3>
-            <form onSubmit={handleCreateUser}>
-              <input
-                type="text"
-                value={newUser.name}
-                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                placeholder="Nombre"
-                style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
-              />
-              <input
-                type="email"
-                value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                placeholder="Correo"
-                style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
-              />
+            <h3 style={{ marginTop: 0 }}>
+              {editingUser ? "Editar Usuario" : "Crear Usuario"}
+            </h3>
+            <form
+              onSubmit={editingUser ? handleUpdateUser : handleCreateUser}
+            >
+              {editingUser ? (
+                <>
+                  <p><strong>{editingUser.name}</strong></p>
+                  <p style={{ fontSize: "0.9rem", color: "#555" }}>
+                    {editingUser.email}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={newUser.name}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, name: e.target.value })
+                    }
+                    placeholder="Nombre"
+                    style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
+                  />
+                  <input
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, email: e.target.value })
+                    }
+                    placeholder="Correo"
+                    style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
+                  />
+                </>
+              )}
               <select
-                value={newUser.role}
-                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                value={editingUser ? editingUser.role : newUser.role}
+                onChange={(e) =>
+                  editingUser
+                    ? setEditingUser({ ...editingUser, role: e.target.value })
+                    : setNewUser({ ...newUser, role: e.target.value })
+                }
                 style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
               >
                 <option value="Usuario">Usuario</option>
@@ -205,8 +291,17 @@ const UserManagement = () => {
                   <label key={opt.key} style={{ marginRight: 10 }}>
                     <input
                       type="checkbox"
-                      checked={newUser.permissions.includes(opt.key)}
-                      onChange={() => toggleNewUserPermission(opt.key)}
+                      checked={
+                        (editingUser
+                          ? editingUser.permissions
+                          : newUser.permissions
+                        ).includes(opt.key)
+                      }
+                      onChange={() =>
+                        editingUser
+                          ? toggleEditPermission(opt.key)
+                          : toggleNewUserPermission(opt.key)
+                      }
                     />
                     {opt.label}
                   </label>
