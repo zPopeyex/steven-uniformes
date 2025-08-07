@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext.jsx";
+import Spinner from "../components/Spinner.jsx";
 
 const OPTION_LIST = [
   { key: "inventario", label: "Inventario" },
@@ -27,13 +28,20 @@ const UserManagement = () => {
     role: "Usuario",
     permissions: [],
   });
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const { permissions } = useAuth();
 
   useEffect(() => {
     const q = collection(db, "users");
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usuarios = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const usuarios = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        active: d.data().active !== false,
+      }));
       setUsers(usuarios);
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -47,19 +55,10 @@ const UserManagement = () => {
       email: newUser.email,
       role: newUser.role,
       permissions: newUser.permissions,
+      active: true,
     });
     setNewUser({ name: "", email: "", role: "Usuario", permissions: [] });
-  };
-
-  const handleRoleChange = async (id, role) => {
-    await updateDoc(doc(db, "users", id), { role });
-  };
-
-  const handlePermissionChange = async (id, option, current = []) => {
-    const perms = current.includes(option)
-      ? current.filter((p) => p !== option)
-      : [...current, option];
-    await updateDoc(doc(db, "users", id), { permissions: perms });
+    setShowModal(false);
   };
 
   const toggleNewUserPermission = (option) => {
@@ -69,6 +68,10 @@ const UserManagement = () => {
         : [...prev.permissions, option];
       return { ...prev, permissions: perms };
     });
+  };
+
+  const handleToggleActive = async (id, current) => {
+    await updateDoc(doc(db, "users", id), { active: !current });
   };
 
   const handleDelete = async (id) => {
@@ -83,121 +86,139 @@ const UserManagement = () => {
     <div style={{ padding: 20 }}>
       <h2>👥 Gestión de Usuarios</h2>
 
-      <form onSubmit={handleCreateUser} style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          value={newUser.name}
-          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-          placeholder="Nombre"
-          style={{ marginRight: 10, padding: 5 }}
-        />
-        <input
-          type="email"
-          value={newUser.email}
-          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-          placeholder="Correo"
-          style={{ marginRight: 10, padding: 5 }}
-        />
-        <select
-          value={newUser.role}
-          onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-          style={{ marginRight: 10, padding: 5 }}
-        >
-          <option value="Usuario">Usuario</option>
-          <option value="Admin">Admin</option>
-        </select>
-        <div style={{ margin: "10px 0" }}>
-          {OPTION_LIST.map((opt) => (
-            <label key={opt.key} style={{ marginRight: 10 }}>
-              <input
-                type="checkbox"
-                checked={newUser.permissions.includes(opt.key)}
-                onChange={() => toggleNewUserPermission(opt.key)}
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
-        <button type="submit" style={{ padding: "5px 10px" }}>
-          ➕ Crear Usuario
-        </button>
-      </form>
+      <button onClick={() => setShowModal(true)} style={{ marginBottom: 20 }}>
+        ➕ Crear Usuario
+      </button>
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-              Nombre
-            </th>
-            <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-              Correo
-            </th>
-            <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-              Rol
-            </th>
-            <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-              Opciones
-            </th>
-            <th style={{ borderBottom: "1px solid #ccc" }}>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => {
-            const displayName =
-              user.name || user.nickname || user.email || "Sin nombre";
-            const displayEmail = user.email || "Sin correo";
-            return (
-              <tr key={user.id}>
-                <td style={{ padding: "8px 0" }}>{displayName}</td>
-                <td style={{ padding: "8px 0" }}>{displayEmail}</td>
-                <td>
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                    style={{ padding: 5 }}
-                  >
-                    <option value="Usuario">Usuario</option>
-                    <option value="Admin">Admin</option>
-                  </select>
-                </td>
-                <td>
-                  {OPTION_LIST.map((opt) => (
-                    <label key={opt.key} style={{ marginRight: 10 }}>
+      {loading ? (
+        <Spinner />
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Nombre
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Correo
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Rol
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Permisos
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                Estado
+              </th>
+              <th style={{ borderBottom: "1px solid #ccc" }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => {
+              const displayName =
+                user.name || user.nickname || user.email || "Sin nombre";
+              const displayEmail = user.email || "Sin correo";
+              const roleClass = `badge ${
+                (user.role || "usuario")
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace("ñ", "n")
+              }`;
+              return (
+                <tr key={user.id}>
+                  <td style={{ padding: "8px 0" }}>{displayName}</td>
+                  <td style={{ padding: "8px 0" }}>{displayEmail}</td>
+                  <td>
+                    <span className={roleClass}>{user.role}</span>
+                  </td>
+                  <td>
+                    {(user.permissions || []).map((perm) => (
+                      <span key={perm} className="chip">
+                        {
+                          OPTION_LIST.find((o) => o.key === perm)?.label || perm
+                        }
+                      </span>
+                    ))}
+                  </td>
+                  <td>
+                    <label className="switch">
                       <input
                         type="checkbox"
-                        checked={(user.permissions || []).includes(opt.key)}
-                        onChange={() =>
-                          handlePermissionChange(
-                            user.id,
-                            opt.key,
-                            user.permissions || []
-                          )
-                        }
+                        checked={user.active}
+                        onChange={() => handleToggleActive(user.id, user.active)}
                       />
-                      {opt.label}
+                      <span className="slider"></span>
                     </label>
-                  ))}
-                </td>
-                <td>
-                  <button
-                    onClick={() => handleDelete(user.id)}
-                    style={{
-                      color: "white",
-                      backgroundColor: "red",
-                      padding: "5px 10px",
-                      border: "none",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => handleDelete(user.id)}
+                      style={{
+                        color: "white",
+                        backgroundColor: "red",
+                        padding: "5px 10px",
+                        border: "none",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Crear Usuario</h3>
+            <form onSubmit={handleCreateUser}>
+              <input
+                type="text"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                placeholder="Nombre"
+                style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
+              />
+              <input
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                placeholder="Correo"
+                style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
+              >
+                <option value="Usuario">Usuario</option>
+                <option value="Admin">Admin</option>
+              </select>
+              <div style={{ margin: "10px 0" }}>
+                {OPTION_LIST.map((opt) => (
+                  <label key={opt.key} style={{ marginRight: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={newUser.permissions.includes(opt.key)}
+                      onChange={() => toggleNewUserPermission(opt.key)}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <button type="submit">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
