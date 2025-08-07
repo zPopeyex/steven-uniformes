@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [permissions, setPermissions] = useState([]);
-  const [nickname, setNickname] = useState(null);
+  const [name, setName] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,7 +54,8 @@ export const AuthProvider = ({ children }) => {
             const data = snap.exists() ? snap.data() : {};
             let userRole = normalizeRole(data.role);
             let userPermissions = data.permissions;
-            const userNickname = data.nickname || "";
+              const userName =
+                data.name || data.nickname || currentUser.displayName || "";
 
             // Asigna permisos si es Admin o faltan permisos
             if (userRole === "Admin") {
@@ -80,7 +81,7 @@ export const AuthProvider = ({ children }) => {
 
             setRole(userRole);
             setPermissions(userPermissions);
-            setNickname(userNickname);
+              setName(userName);
           } catch (error) {
             console.error("Error fetching user data:", error);
             setRole(null);
@@ -89,7 +90,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           setRole(null);
           setPermissions([]);
-          setNickname(null);
+            setName(null);
         }
         setLoading(false);
       };
@@ -112,8 +113,10 @@ export const AuthProvider = ({ children }) => {
 
     let userRole = snap.exists() ? normalizeRole(snap.data().role) : "Vendedor";
     userRole = userRole || "Vendedor";
-    let userPermissions = snap.exists() ? snap.data().permissions : undefined;
-    let userNickname = snap.exists() ? snap.data().nickname : result.user.displayName;
+      let userPermissions = snap.exists() ? snap.data().permissions : undefined;
+      let userName = snap.exists()
+        ? snap.data().name || snap.data().nickname
+        : result.user.displayName;
 
     if (userRole === "Admin") {
       userPermissions = DEFAULT_PERMISSIONS.Admin;
@@ -132,47 +135,50 @@ export const AuthProvider = ({ children }) => {
       userPermissions = getDefaultPermissions(userRole);
       await setDoc(
         userRef,
-        {
-          role: userRole,
-          permissions: userPermissions,
-          nickname: userNickname || "",
-        },
+          {
+            role: userRole,
+            permissions: userPermissions,
+            name: userName || "",
+            email: result.user.email,
+          },
         { merge: true }
       );
     } else if (!userPermissions || userPermissions.length === 0) {
       userPermissions = getDefaultPermissions(userRole);
       await setDoc(
         userRef,
-        { permissions: userPermissions },
-        { merge: true }
-      );
-    } else if (!userNickname && result.user.displayName) {
-      userNickname = result.user.displayName;
-      await setDoc(
-        userRef,
-        { nickname: userNickname },
-        { merge: true }
-      );
-    }
+          { permissions: userPermissions },
+          { merge: true }
+        );
+      } else if (!userName && result.user.displayName) {
+        userName = result.user.displayName;
+        await setDoc(userRef, { name: userName }, { merge: true });
+      }
 
     setRole(userRole);
     setPermissions(userPermissions);
-    setNickname(userNickname || "");
+      await setDoc(
+        userRef,
+        { name: userName || "", email: result.user.email },
+        { merge: true }
+      );
+      setName(userName || "");
   };
 
   // ---- Registro con email y contraseña ----
-  const register = async (email, password, nicknameValue) => {
+  const register = async (email, password, nameValue) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const role = "Usuario";
     const userPermissions = getDefaultPermissions(role);
     await setDoc(doc(db, "users", result.user.uid), {
       role,
       permissions: userPermissions,
-      nickname: nicknameValue || "",
+      name: nameValue || "",
+      email: result.user.email,
     });
     setRole(role);
     setPermissions(userPermissions);
-    setNickname(nicknameValue || "");
+    setName(nameValue || "");
   };
 
   // ---- Reset de contraseña ----
@@ -191,12 +197,13 @@ export const AuthProvider = ({ children }) => {
         loginWithGoogle,
         register,
         resetPassword,
-        logout,
-        nickname,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+          logout,
+          name,
+          email: user?.email || null,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
   );
 };
 

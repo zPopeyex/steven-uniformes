@@ -142,55 +142,60 @@ const UserManagement = () => {
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td style={{ padding: "8px 0" }}>{user.name}</td>
-              <td style={{ padding: "8px 0" }}>{user.email}</td>
-              <td>
-                <select
-                  value={user.role}
-                  onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                  style={{ padding: 5 }}
-                >
-                  <option value="Usuario">Usuario</option>
-                  <option value="Admin">Admin</option>
-                </select>
-              </td>
-              <td>
-                {OPTION_LIST.map((opt) => (
-                  <label key={opt.key} style={{ marginRight: 10 }}>
-                    <input
-                      type="checkbox"
-                      checked={(user.permissions || []).includes(opt.key)}
-                      onChange={() =>
-                        handlePermissionChange(
-                          user.id,
-                          opt.key,
-                          user.permissions || []
-                        )
-                      }
-                    />
-                    {opt.label}
-                  </label>
-                ))}
-              </td>
-              <td>
-                <button
-                  onClick={() => handleDelete(user.id)}
-                  style={{
-                    color: "white",
-                    backgroundColor: "red",
-                    padding: "5px 10px",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                  }}
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
+          {users.map((user) => {
+            const displayName =
+              user.name || user.nickname || user.email || "Sin nombre";
+            const displayEmail = user.email || "Sin correo";
+            return (
+              <tr key={user.id}>
+                <td style={{ padding: "8px 0" }}>{displayName}</td>
+                <td style={{ padding: "8px 0" }}>{displayEmail}</td>
+                <td>
+                  <select
+                    value={user.role}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                    style={{ padding: 5 }}
+                  >
+                    <option value="Usuario">Usuario</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                </td>
+                <td>
+                  {OPTION_LIST.map((opt) => (
+                    <label key={opt.key} style={{ marginRight: 10 }}>
+                      <input
+                        type="checkbox"
+                        checked={(user.permissions || []).includes(opt.key)}
+                        onChange={() =>
+                          handlePermissionChange(
+                            user.id,
+                            opt.key,
+                            user.permissions || []
+                          )
+                        }
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                </td>
+                <td>
+                  <button
+                    onClick={() => handleDelete(user.id)}
+                    style={{
+                      color: "white",
+                      backgroundColor: "red",
+                      padding: "5px 10px",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
