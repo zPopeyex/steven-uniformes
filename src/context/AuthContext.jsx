@@ -90,14 +90,12 @@ export const AuthProvider = ({ children }) => {
             } else {
               console.error("Error fetching user data:", error);
             }
-            setRole(null);
-            setPermissions([]);
-            setName(null);
           }
         } else {
           setRole(null);
           setPermissions([]);
             setName(null);
+          setUser(null);
         }
         setLoading(false);
       };
