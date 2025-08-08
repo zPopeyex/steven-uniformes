@@ -83,9 +83,16 @@ export const AuthProvider = ({ children }) => {
             setPermissions(userPermissions);
               setName(userName);
           } catch (error) {
-            console.error("Error fetching user data:", error);
+            if (error.code === "permission-denied") {
+              console.warn(
+                "Insufficient permissions to fetch user data. Using defaults.",
+              );
+            } else {
+              console.error("Error fetching user data:", error);
+            }
             setRole(null);
             setPermissions([]);
+            setName(null);
           }
         } else {
           setRole(null);
