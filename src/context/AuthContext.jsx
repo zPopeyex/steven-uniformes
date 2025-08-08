@@ -48,14 +48,14 @@ export const AuthProvider = ({ children }) => {
       // 🔽 Pasa todo el código async a esta función:
       const handleUser = async () => {
         if (currentUser) {
+          const userRef = doc(db, "users", currentUser.uid);
           try {
-            const userRef = doc(db, "users", currentUser.uid);
             const snap = await getDoc(userRef);
             const data = snap.exists() ? snap.data() : {};
             let userRole = normalizeRole(data.role);
             let userPermissions = data.permissions;
-              const userName =
-                data.name || data.nickname || currentUser.displayName || "";
+            const userName =
+              data.name || data.nickname || currentUser.displayName || "";
 
             // Asigna permisos si es Admin o faltan permisos
             if (userRole === "Admin") {
@@ -88,9 +88,24 @@ export const AuthProvider = ({ children }) => {
                 "Insufficient permissions to fetch user data. Using defaults.",
               );
               const fallbackRole = "Usuario";
+              const defaultPerms = getDefaultPermissions(fallbackRole);
               setRole(fallbackRole);
-              setPermissions(getDefaultPermissions(fallbackRole));
+              setPermissions(defaultPerms);
               setName(currentUser?.displayName || "");
+              try {
+                await setDoc(
+                  userRef,
+                  {
+                    role: fallbackRole,
+                    permissions: defaultPerms,
+                    name: currentUser?.displayName || "",
+                    email: currentUser?.email || "",
+                  },
+                  { merge: true },
+                );
+              } catch (writeError) {
+                console.warn("Unable to create user document:", writeError);
+              }
             } else {
               console.error("Error fetching user data:", error);
             }
@@ -179,12 +194,26 @@ export const AuthProvider = ({ children }) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const role = "Usuario";
     const userPermissions = getDefaultPermissions(role);
-    await setDoc(doc(db, "users", result.user.uid), {
-      role,
-      permissions: userPermissions,
-      name: nameValue || "",
-      email: result.user.email,
-    });
+    try {
+      await setDoc(
+        doc(db, "users", result.user.uid),
+        {
+          role,
+          permissions: userPermissions,
+          name: nameValue || "",
+          email: result.user.email,
+        },
+        { merge: true },
+      );
+    } catch (error) {
+      if (error.code === "permission-denied") {
+        console.warn(
+          "Insufficient permissions to create user document. Skipping Firestore write.",
+        );
+      } else {
+        throw error;
+      }
+    }
     setRole(role);
     setPermissions(userPermissions);
     setName(nameValue || "");
