@@ -4,7 +4,7 @@ import Inicio from "./pages/Inicio";
 import Inventario from "./pages/Inventario";
 import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
-import Ventas from "./pages/Ventas";
+import VentasEncargos from "./pages/VentasEncargos";
 import UserManagement from "./pages/UserManagement";
 import { useAuth } from "./context/AuthContext.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
@@ -97,7 +97,7 @@ function App() {
           path="/ventas"
           element={
             <RoleRoute requiredPermissions={["ventas"]}>
-              <Ventas />
+              <VentasEncargos />
             </RoleRoute>
           }
         />
