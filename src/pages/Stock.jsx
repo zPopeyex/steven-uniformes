@@ -48,7 +48,7 @@ const Stock = () => {
       setTimeout(() => setLoading(false), 100);
     });
 
-    return () => unsubscribe(); // Limpia el listener al desmontar
+    return () => unsubscribe();
   }, []);
 
   const { byPlantel, labelPlantel } = useMemo(() => {
@@ -88,20 +88,23 @@ const Stock = () => {
     if (planteles.length && !activeTab) setActiveTab(planteles[0].key);
   }, [planteles, activeTab]);
 
-  const rows = useMemo(() => {
-    const byProducto = byPlantel.get(activeTab);
-    if (!byProducto) return [];
-    return Array.from(byProducto.values())
-      .map((row) => {
-        const total = TALLAS.reduce(
-          (sum, t) => sum + (row.tallas[t] || 0),
-          0
-        );
-        return { producto: row.label, ...row.tallas, total };
-      })
-      .filter((r) => r.total > 0)
-      .sort((a, b) => a.producto.localeCompare(b.producto));
-  }, [byPlantel, activeTab]);
+  const rowsByPlantel = useMemo(() => {
+    const result = new Map();
+    for (const [plKey, byProducto] of byPlantel.entries()) {
+      const rows = Array.from(byProducto.values())
+        .map((row) => {
+          const total = TALLAS.reduce(
+            (sum, t) => sum + (row.tallas[t] || 0),
+            0
+          );
+          return { producto: row.label, ...row.tallas, total };
+        })
+        .filter((r) => r.total > 0)
+        .sort((a, b) => a.producto.localeCompare(b.producto));
+      result.set(plKey, rows);
+    }
+    return result;
+  }, [byPlantel]);
 
   const getBadgeClass = (n) => {
     if (n === 0) return "badge--zero";
@@ -159,44 +162,52 @@ const Stock = () => {
               </button>
             ))}
           </div>
-          <div role="tabpanel" className="tab-content">
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    {TALLAS.map((t) => (
-                      <th key={t}>{t}</th>
-                    ))}
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows
-                    .filter((r) =>
-                      r.producto.toLowerCase().includes(search.toLowerCase())
-                    )
-                    .map((row) => (
-                      <tr key={row.producto}>
-                        <td>{row.producto}</td>
+          {planteles.map((pl) => {
+            const rows = (rowsByPlantel.get(pl.key) || []).filter((r) =>
+              r.producto.toLowerCase().includes(search.toLowerCase())
+            );
+            return (
+              <div
+                key={pl.key}
+                role="tabpanel"
+                hidden={activeTab !== pl.key}
+                className="tab-content"
+              >
+                <div className="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
                         {TALLAS.map((t) => (
-                          <td key={`${row.producto}-${t}`}>
-                            <span className={`badge ${getBadgeClass(row[t])}`}>
-                              {row[t]}
+                          <th key={t}>{t}</th>
+                        ))}
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row.producto}>
+                          <td>{row.producto}</td>
+                          {TALLAS.map((t) => (
+                            <td key={`${row.producto}-${t}`}>
+                              <span className={`badge ${getBadgeClass(row[t])}`}>
+                                {row[t]}
+                              </span>
+                            </td>
+                          ))}
+                          <td>
+                            <span className={`badge ${getBadgeClass(row.total)}`}>
+                              {row.total}
                             </span>
                           </td>
-                        ))}
-                        <td>
-                          <span className={`badge ${getBadgeClass(row.total)}`}>
-                            {row.total}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -204,3 +215,4 @@ const Stock = () => {
 };
 
 export default Stock;
+
