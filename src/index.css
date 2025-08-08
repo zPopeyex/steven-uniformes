@@ -201,8 +201,35 @@ input:checked + .slider:before {
 }
 body {
   font-family: "Segoe UI", sans-serif;
-  background: #f7f8fa;
+  background: #f4f6fa;
   color: #333;
+}
+
+.page-title {
+  font-size: 2.4em;
+  font-weight: 700;
+  margin: 0 0 32px;
+  color: #1f2937;
+}
+
+.home-welcome-card {
+  background: #fff;
+  border-radius: calc(var(--radius) + 6px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 60px 20px;
+  margin: 24px auto 0 auto;
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-message {
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+  font-size: 1.2em;
 }
 .sidebar {
   background: #fff;
