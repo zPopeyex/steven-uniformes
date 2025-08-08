@@ -3,8 +3,15 @@ import React, { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext.jsx";
+import Escaner from "./Escaner.jsx";
 
-const InventarioForm = ({ onAgregar, productoEscaneado }) => {
+const InventarioForm = ({
+  onAgregar,
+  productoEscaneado,
+  mostrarEscaner,
+  onScanToggle,
+  onQRDetectado,
+}) => {
   const [producto, setProducto] = useState({
     colegio: "",
     prenda: "",
@@ -72,29 +79,60 @@ const InventarioForm = ({ onAgregar, productoEscaneado }) => {
     onAgregar(productoFinal);
   };
 
-
   return (
-    <form onSubmit={handleSubmit} style={{ marginBottom: "20px" }}>
-      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-        <select name="colegio" value={producto.colegio} onChange={handleChange}>
-          <option value="">Nombre plantel</option>
+    <form onSubmit={handleSubmit} className="st-inv-form">
+      <div className="st-inv-grid">
+        <button
+          type="button"
+          className="st-inv-btn-ghost"
+          onClick={onScanToggle}
+          aria-label="Escanear código QR"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 7V3h4M17 3h4v4M21 17v4h-4M7 21H3v-4" />
+            <path d="M9 9h6v6H9z" />
+          </svg>
+          <span>Escanear QR</span>
+        </button>
+        <select
+          name="colegio"
+          value={producto.colegio}
+          onChange={handleChange}
+          className="st-inv-field"
+          aria-label="Plantel"
+        >
+          <option value="">Plantel</option>
           {colegios.map((c, i) => (
             <option key={i} value={c}>{c}</option>
           ))}
         </select>
-
-        <select name="prenda" value={producto.prenda} onChange={handleChange}>
+        <select
+          name="prenda"
+          value={producto.prenda}
+          onChange={handleChange}
+          className="st-inv-field"
+          aria-label="Producto"
+        >
           <option value="">Producto</option>
           {prendas.map((p, i) => (
             <option key={i} value={p}>{p}</option>
           ))}
         </select>
-
         <input
           name="talla"
           value={producto.talla}
           onChange={handleChange}
           placeholder="Talla"
+          aria-label="Talla"
+          className="st-inv-field"
         />
         <input
           name="cantidad"
@@ -102,6 +140,8 @@ const InventarioForm = ({ onAgregar, productoEscaneado }) => {
           onChange={handleChange}
           placeholder="Cantidad"
           type="number"
+          aria-label="Cantidad"
+          className="st-inv-field"
         />
         <input
           name="precio"
@@ -109,11 +149,29 @@ const InventarioForm = ({ onAgregar, productoEscaneado }) => {
           onChange={handleChange}
           placeholder="Precio"
           type="number"
+          aria-label="Precio"
+          className="st-inv-field"
         />
+        <button type="submit" className="st-inv-btn-primary">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span>+ Agregar al inventario</span>
+        </button>
       </div>
-      <button type="submit" style={{ marginTop: 10 }}>
-        ➕ Agregar al inventario
-      </button>
+      {mostrarEscaner && (
+        <div className="st-inv-scanner">
+          <Escaner onScan={onQRDetectado} />
+        </div>
+      )}
     </form>
   );
 };
