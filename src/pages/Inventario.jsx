@@ -14,8 +14,8 @@ import {
 import { db } from "../firebase/firebaseConfig";
 import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
-import Escaner from "../components/Escaner";
 import { useAuth } from "../context/AuthContext.jsx";
+import "../styles/inventario.css";
 
 const Inventario = () => {
   const [inventario, setInventario] = useState([]);
@@ -51,6 +51,10 @@ const Inventario = () => {
     } else {
       alert("El código QR no tiene el formato esperado.");
     }
+  };
+
+  const handleScanToggle = () => {
+    setMostrarEscaner((prev) => !prev);
   };
 
   // ✅ Agregar al inventario y también al stock_actual
@@ -141,55 +145,69 @@ const Inventario = () => {
   };
 
   return (
-  <div className="card-container">
-    <div className="card">
-      <div className="card-header">
-        <h2>
-          <span role="img" aria-label="box" style={{ marginRight: 8 }}>📦</span>
-          Agregar al Inventario
-        </h2>
-      </div>
-      <div style={{ padding: "0 10px 12px 10px" }}>
+    <div className="st-inv-page">
+      <div className="st-inv-card">
+        <div className="st-inv-card-header">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 7l9-4 9 4v10l-9 4-9-4V7z" />
+            <path d="M3 7l9 4 9-4" />
+            <path d="M12 3v8" />
+          </svg>
+          <h2 className="st-inv-card-title">Agregar al Inventario</h2>
+        </div>
         {role === "Admin" && (
-          <>
-            <button
-              onClick={() => setMostrarEscaner((prev) => !prev)}
-              className={`btn-secondary`}
-              style={{ marginBottom: 14 }}
-            >
-              {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
-            </button>
-            {mostrarEscaner && (
-              <div style={{ marginBottom: 16 }}>
-                <Escaner onScan={handleQRDetectado} />
-              </div>
-            )}
-
-            <InventarioForm
-              productoEscaneado={productoInicial}
-              onAgregar={handleAgregarInventario}
-            />
-          </>
+          <InventarioForm
+            productoEscaneado={productoInicial}
+            onAgregar={handleAgregarInventario}
+            mostrarEscaner={mostrarEscaner}
+            onScanToggle={handleScanToggle}
+            onQRDetectado={handleQRDetectado}
+          />
         )}
       </div>
-    </div>
 
-    <div className="card">
-      <div className="card-header">
-        <h2>
-          <span role="img" aria-label="history" style={{ marginRight: 8 }}>🔄</span>
-          Historial de ingreso de inventario
-        </h2>
-      </div>
-      <div className="table-wrapper">
-        <InventarioTable
-          productos={inventario}
-          onEliminar={handleEliminar}
-          role={role}
-        />
+      <div className="st-inv-card">
+        <div className="st-inv-card-header">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 3" />
+          </svg>
+          <h2 className="st-inv-card-title">Historial de ingreso de inventario</h2>
+        </div>
+        <div className="st-inv-history-bar">
+          <input
+            type="text"
+            className="st-inv-field st-inv-search"
+            placeholder="Buscar..."
+            aria-label="Buscar"
+          />
+          <button type="button" className="st-inv-btn-outline">Filtrar</button>
+        </div>
+        <div className="st-inv-table-wrapper">
+          <InventarioTable
+            productos={inventario}
+            onEliminar={handleEliminar}
+            role={role}
+          />
+        </div>
       </div>
     </div>
-  </div>
   );
 };
 

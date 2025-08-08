@@ -1,0 +1,245 @@
+:root {
+  --st-primary: #0052CC;
+  --st-success: #21ba45;
+  --st-text: #1f2937;
+  --st-muted: #6b7280;
+  --st-border: #E5E7EB;
+  --st-page: #F5F7FB;
+  --st-shadow: 0 8px 18px rgba(0,0,0,0.06);
+  --st-radius: 12px;
+  --st-radius-pill: 9999px;
+  --st-focus: 0 0 0 3px rgba(0,82,204,.25);
+}
+
+.st-inv-page {
+  background: var(--st-page);
+  font-family: "Segoe UI", system-ui, -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+  color: var(--st-text);
+  padding: 20px;
+}
+
+.st-inv-card {
+  background: #fff;
+  border-radius: var(--st-radius);
+  box-shadow: var(--st-shadow);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.st-inv-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--st-text);
+}
+
+.st-inv-card-header svg {
+  width: 20px;
+  height: 20px;
+}
+
+.st-inv-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.st-inv-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.st-inv-form {
+  margin-bottom: 20px;
+}
+
+@media (min-width: 1200px) {
+  .st-inv-grid {
+    grid-template-columns: auto repeat(5, 1fr) auto;
+    align-items: start;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .st-inv-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .st-inv-btn-primary {
+    grid-column: 4;
+  }
+}
+
+@media (max-width: 767px) {
+  .st-inv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.st-inv-field,
+.st-inv-btn-primary,
+.st-inv-btn-ghost,
+.st-inv-btn-outline {
+  height: 44px;
+  border-radius: var(--st-radius);
+  font-size: 0.9rem;
+}
+
+.st-inv-field {
+  width: 100%;
+  border: 1px solid var(--st-border);
+  padding: 0 12px;
+  color: var(--st-text);
+  background: #fff;
+}
+
+.st-inv-field::placeholder {
+  color: #9ca3af;
+}
+
+.st-inv-field:focus {
+  outline: none;
+  border-color: var(--st-primary);
+  box-shadow: var(--st-focus);
+}
+
+.st-inv-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 20px;
+  background: var(--st-primary);
+  color: #fff;
+  border: 1px solid var(--st-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.st-inv-btn-primary:hover {
+  background: #0040A3;
+}
+
+.st-inv-btn-primary:active {
+  background: #00378E;
+}
+
+.st-inv-btn-primary:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.st-inv-btn-primary:focus {
+  outline: none;
+  box-shadow: var(--st-focus);
+}
+
+.st-inv-btn-ghost,
+.st-inv-btn-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.st-inv-btn-ghost {
+  border: 1px solid #D1D5DB;
+  color: #374151;
+}
+
+.st-inv-btn-ghost:hover {
+  background: #F3F4F6;
+}
+
+.st-inv-btn-outline {
+  border: 1px solid var(--st-primary);
+  color: var(--st-primary);
+}
+
+.st-inv-btn-outline:hover {
+  background: rgba(0,82,204,0.05);
+}
+
+.st-inv-btn-ghost:focus,
+.st-inv-btn-outline:focus {
+  outline: none;
+  border-color: var(--st-primary);
+  box-shadow: var(--st-focus);
+}
+
+.st-inv-history-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.st-inv-history-bar .st-inv-search {
+  flex: 1;
+}
+
+.st-inv-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.st-inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.st-inv-table th {
+  background: #F8FAFF;
+  color: #374151;
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--st-border);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+}
+
+.st-inv-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--st-border);
+  white-space: nowrap;
+  color: var(--st-text);
+}
+
+.st-inv-table tbody tr:hover {
+  background: #F9FBFF;
+}
+
+.st-inv-btn-delete {
+  background: #DC2626;
+  color: #fff;
+  border: none;
+  border-radius: var(--st-radius-pill);
+  padding: 0 16px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.st-inv-btn-delete:hover {
+  background: #B91C1C;
+}
+
+.st-inv-btn-delete:focus {
+  outline: none;
+  box-shadow: var(--st-focus);
+}
+
+.st-inv-scanner {
+  margin-top: 16px;
+}
+
