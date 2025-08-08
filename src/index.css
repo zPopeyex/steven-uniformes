@@ -225,6 +225,34 @@ body {
   color: #333;
 }
 
+/* Sidebar */
+.sidebar {
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+}
+.sidebar .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  color: #333;
+  cursor: pointer;
+}
+.sidebar .menu-item:hover {
+  background: var(--blue-light);
+}
+.sidebar .menu-item.active {
+  background: var(--blue);
+  color: #fff;
+}
+.sidebar .menu-item svg {
+  color: var(--blue);
+}
+.sidebar .menu-item.active svg {
+  color: #fff;
+}
+
 .card,
 .sales-card,
 .modal,
