@@ -1,0 +1,84 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  font-family: "Segoe UI", sans-serif;
+}
+
+aside.sidebar {
+  width: 260px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: #fff;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 40px;
+}
+
+.logo-icon {
+  font-size: 32px;
+  color: var(--blue);
+}
+
+.logo-title {
+  color: var(--blue);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+aside.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+aside.sidebar .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  color: #333;
+  text-decoration: none;
+  font-size: 1rem;
+  border-radius: 14px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.menu-icon {
+  font-size: 20px;
+  color: var(--blue);
+  transition: color 0.2s;
+}
+
+aside.sidebar .menu-item:hover {
+  background: #e9f1ff;
+  color: var(--blue);
+}
+
+aside.sidebar .menu-item:hover .menu-icon {
+  color: var(--blue);
+}
+
+aside.sidebar .menu-item.active {
+  background: var(--blue);
+  color: #fff;
+}
+
+aside.sidebar .menu-item.active .menu-icon {
+  color: #fff;
+}
+
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  padding: 20px 40px;
+}
