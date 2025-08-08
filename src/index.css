@@ -505,4 +505,50 @@ details summary:hover {
     padding: 28px 12px;
   }
 }
+.card-container {
+  max-width: 1300px;
+  margin: 38px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.09);
+  padding: 0 0 22px 0;
+  margin-bottom: 0;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 28px 36px 18px 36px;
+  border-bottom: 1.5px solid #f2f3f5;
+  font-size: 1.45em;
+  font-weight: 700;
+  color: #222;
+}
+.btn-secondary {
+  background: #f1f7ff;
+  color: #0052cc;
+  border: none;
+  border-radius: 12px;
+  padding: 11px 20px;
+  font-size: 1em;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: background 0.16s;
+  margin-bottom: 10px;
+}
+.btn-secondary:hover {
+  background: #e4edfc;
+}
+.table-wrapper {
+  padding: 20px 32px 12px 32px;
+}
+
 
