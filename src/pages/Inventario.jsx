@@ -141,39 +141,58 @@ const Inventario = () => {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>📦 Agregar al Inventario</h2>
+    return (
+  <div className="card-container">
+    <div className="card">
+      <div className="card-header">
+        <h2>
+          <span role="img" aria-label="box" style={{ marginRight: 8 }}>📦</span>
+          Agregar al Inventario
+        </h2>
+      </div>
+      <div style={{ padding: "0 10px 12px 10px" }}>
+        {role === "Admin" && (
+          <>
+            <button
+              onClick={() => setMostrarEscaner((prev) => !prev)}
+              className={`btn-secondary`}
+              style={{ marginBottom: 14 }}
+            >
+              {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
+            </button>
+            {mostrarEscaner && (
+              <div style={{ marginBottom: 16 }}>
+                <Escaner onScan={handleQRDetectado} />
+              </div>
+            )}
 
-      {role === "Admin" && (
-        <>
-          <button
-            onClick={() => setMostrarEscaner((prev) => !prev)}
-            style={{
-              padding: "10px 20px",
-              marginBottom: 10,
-              borderRadius: 8,
-              backgroundColor: "#cde",
-              cursor: "pointer",
-            }}
-          >
-            {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
-          </button>
-
-          {mostrarEscaner && <Escaner onScan={handleQRDetectado} />}
-
-          <InventarioForm
-            productoEscaneado={productoInicial}
-            onAgregar={handleAgregarInventario}
-          />
-        </>
-      )}
-
-      <InventarioTable
-        productos={inventario}
-        onEliminar={handleEliminar}
-        role={role}
-      />
+            <InventarioForm
+              productoEscaneado={productoInicial}
+              onAgregar={handleAgregarInventario}
+            />
+          </>
+        )}
+      </div>
     </div>
+
+    <div className="card">
+      <div className="card-header">
+        <h2>
+          <span role="img" aria-label="history" style={{ marginRight: 8 }}>🔄</span>
+          Historial de ingreso de inventario
+        </h2>
+      </div>
+      <div className="table-wrapper">
+        <InventarioTable
+          productos={inventario}
+          onEliminar={handleEliminar}
+          role={role}
+        />
+      </div>
+    </div>
+  </div>
+);
+
   );
 };
 
