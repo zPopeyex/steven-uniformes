@@ -141,7 +141,6 @@ const Inventario = () => {
   };
 
   return (
-    return (
   <div className="card-container">
     <div className="card">
       <div className="card-header">
@@ -191,8 +190,6 @@ const Inventario = () => {
       </div>
     </div>
   </div>
-);
-
   );
 };
 
