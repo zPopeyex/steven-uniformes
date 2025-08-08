@@ -87,6 +87,10 @@ export const AuthProvider = ({ children }) => {
               console.warn(
                 "Insufficient permissions to fetch user data. Using defaults.",
               );
+              const fallbackRole = "Usuario";
+              setRole(fallbackRole);
+              setPermissions(getDefaultPermissions(fallbackRole));
+              setName(currentUser?.displayName || "");
             } else {
               console.error("Error fetching user data:", error);
             }
