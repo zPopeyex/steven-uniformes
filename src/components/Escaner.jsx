@@ -17,7 +17,7 @@ const Escaner = ({ onScan }) => {
       const readerElement = document.getElementById(qrCodeRegionId);
       if (!readerElement) return;
 
-      html5QrCodeRef.current = new Html5Qrcode(qrCodeRegionId);
+      html5QrCodeRef.current = new Html5Qrcode(readerElement);
       const devices = await Html5Qrcode.getCameras();
       
 
