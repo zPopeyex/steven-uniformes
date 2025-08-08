@@ -19,10 +19,10 @@ const normalizeTalla = (v) => {
   const mapTxt = { S: "S", M: "M", L: "L", XL: "XL", XXL: "XXL" };
   if (mapTxt[t]) return mapTxt[t];
   const num = t.replace(/[^\d]/g, "");
-  return num ? String(Number(num)) : null;
+  return num ? Number(num) : null;
 };
 
-const TALLAS = ["6", "8", "10", "12", "14", "16", "S", "M", "L", "XL", "XXL"];
+const TALLAS = [6, 8, 10, 12, 14, 16, "S", "M", "L", "XL", "XXL"];
 
 const Stock = () => {
   const [productos, setProductos] = useState([]);
