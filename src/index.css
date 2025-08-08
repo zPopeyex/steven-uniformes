@@ -224,8 +224,6 @@ body {
   background: #f7f8fa;
   color: #333;
 }
-
-/* Sidebar */
 .sidebar {
   background: #fff;
   border-right: 1px solid #e0e0e0;
@@ -252,7 +250,6 @@ body {
 .sidebar .menu-item.active svg {
   color: #fff;
 }
-
 .card,
 .sales-card,
 .modal,
