@@ -74,7 +74,7 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
   };
 
   return (
-    <div style={{ overflowX: "auto", marginTop: 20 }}>
+    <div className="resumen-ventas">
       <CardTable
         title="Ventas y encargos 💵"
         right={`Total: $${totalVentas.toLocaleString("es-CO")}`}
@@ -84,14 +84,7 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
             style={{ marginBottom: 10, fontWeight: "bold", fontSize: "1.1em" }}
           ></div>
         )}
-        <table
-          style={{
-            border: "1px solid #ddd",
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "14px",
-          }}
-        >
+        <table className="tabla-encargos">
           <thead>
             <tr>
               <th style={estiloEncabezado}>Fecha</th>
