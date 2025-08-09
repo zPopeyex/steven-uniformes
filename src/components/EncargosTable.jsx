@@ -60,17 +60,9 @@ const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
                     <td>
                       <button
                         onClick={() => toggleExpandirEncargo(encargo.id)}
-                        aria-label="Ver detalle"
-                        className="expand-btn"
+                        aria-label={`Mostrar detalles de ${encargo.numeroFactura}`}
+                        className="pill pill--ghost"
                       >
-                        <i
-                          className={`fa-solid ${
-                            encargoExpandido === encargo.id
-                              ? "fa-chevron-down"
-                              : "fa-chevron-right"
-                          }`}
-                        />
-                        {" "}
                         {encargo.numeroFactura}
                       </button>
                     </td>
@@ -127,7 +119,7 @@ const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
                           <div className="encargo-head">
                             <div className="encargo-client">
                               <h4>Cliente</h4>
-                              <p>{encargo.cliente?.nombre || "N/A"}</p>
+                              <p><strong>{encargo.cliente?.nombre || "N/A"}</strong></p>
                               <p>{encargo.cliente?.documento || ""}</p>
                               <p>{encargo.cliente?.telefono || ""}</p>
                             </div>
@@ -137,6 +129,7 @@ const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
                                 <button
                                   className="pill"
                                   onClick={() => setMostrarHistorial(true)}
+                                  aria-label="Ver historial de pagos"
                                 >
                                   <i className="fa-solid fa-circle-info" /> Ver historial de pagos
                                 </button>
@@ -147,14 +140,28 @@ const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
                               <p>
                                 Abono: ${encargo.abono?.toLocaleString("es-CO") || "0"}
                               </p>
-                              <p>
-                                Saldo: ${encargo.saldo?.toLocaleString("es-CO") || "0"}
-                                {encargo.saldo === 0 && (
-                                  <span className="badge badge--paid">
-                                    <i className="fa-solid fa-check" /> Pagado
-                                  </span>
-                                )}
-                              </p>
+                              {(() => {
+                                const isPagado = Number(encargo.saldo) === 0;
+                                return (
+                                  <p>
+                                    Saldo: ${encargo.saldo?.toLocaleString("es-CO") || "0"}{" "}
+                                    <span
+                                      className={`badge ${
+                                        isPagado ? "badge--paid" : "badge--pending"
+                                      }`}
+                                    >
+                                      <i
+                                        className={`fa-solid ${
+                                          isPagado
+                                            ? "fa-check"
+                                            : "fa-triangle-exclamation"
+                                        }`}
+                                      />{" "}
+                                      {isPagado ? "Pagado" : "Pendiente"}
+                                    </span>
+                                  </p>
+                                );
+                              })()}
                             </div>
                           </div>
                           <div className="encargo-products">
@@ -200,7 +207,7 @@ const EncargosTable = ({ encargos, onActualizarEstado, role }) => {
                                               p.entregado ? "fa-check" : "fa-triangle-exclamation"
                                             }`}
                                           ></i>
-                                          {p.entregado ? " Entregado" : " Pendiente"}
+                                          {p.entregado ? " Entregado" : " Pendiente entrega"}
                                         </span>
                                       </td>
                                     </tr>
