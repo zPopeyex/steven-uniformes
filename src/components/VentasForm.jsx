@@ -281,27 +281,18 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
   const totalVenta = venta.cantidad * (venta.precio || 0);
 
   return (
-    <div style={{ margin: "20px 0" }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: "10px",
-          marginBottom: "15px",
-        }}
-      >
+    <div className="ventas-form">
+      <div className="sales-form-grid">
         {/* Selects para Colegio/Producto/Talla */}
-        <div>
-          <label>Colegio</label>
+        <div className="form-field">
+          <label htmlFor="colegio">Colegio</label>
           <select
+            id="colegio"
             name="colegio"
             value={venta.colegio}
             onChange={handleChange}
             required
-            style={{
-              width: "100%",
-              border: !venta.colegio ? "1px solid red" : "1px solid #ddd",
-            }}
+            style={{ border: !venta.colegio ? "1px solid red" : undefined }}
           >
             <option value="" disabled>
               Seleccionar
@@ -313,9 +304,10 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             ))}
           </select>
         </div>
-        <div>
-          <label>Producto</label>
+        <div className="form-field">
+          <label htmlFor="prenda">Producto</label>
           <select
+            id="prenda"
             name="prenda"
             value={venta.prenda}
             onChange={handleChange}
@@ -329,9 +321,10 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             ))}
           </select>
         </div>
-        <div>
-          <label>Talla</label>
+        <div className="form-field">
+          <label htmlFor="talla">Talla</label>
           <select
+            id="talla"
             name="talla"
             value={venta.talla}
             onChange={handleChange}
@@ -345,9 +338,10 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             ))}
           </select>
         </div>
-        <div>
-          <label>Precio Unitario</label>
+        <div className="form-field">
+          <label htmlFor="precio">Precio Unitario</label>
           <input
+            id="precio"
             type="number"
             name="precio"
             value={venta.precio}
@@ -355,53 +349,38 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             required
           />
         </div>
-        <div>
-          <label>Cantidad (Stock: {stockActual})</label>
-          <input
-            type="number"
-            name="cantidad"
-            min="1"
-            max={stockActual}
-            value={venta.cantidad}
-            onChange={handleChange}
-            required
-          />
+        <div className="form-field">
+          <label htmlFor="cantidad">Cantidad</label>
+          <div className="cantidad-wrapper">
+            <input
+              id="cantidad"
+              type="number"
+              name="cantidad"
+              min="1"
+              max={stockActual}
+              value={venta.cantidad}
+              onChange={handleChange}
+              required
+            />
+            <span className="stock-helper">Stock: {stockActual}</span>
+          </div>
         </div>
-        <div>
-          <label>Total</label>
+        <div className="form-field">
+          <label htmlFor="total">Total</label>
           <input
+            id="total"
             value={`$${totalVenta.toLocaleString("es-CO")}`}
             readOnly
-            style={{ backgroundColor: "#f0f0f0" }}
           />
         </div>
-        <div>
-          <label>Método de Pago</label>
+        <div className="form-field">
+          <label htmlFor="estado">Estado</label>
           <select
-            name="metodoPago"
-            value={venta.metodoPago}
-            onChange={handleChange}
-          >
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia</option>
-            <option value="tarjeta">Tarjeta</option>
-          </select>
-        </div>
-        <div>
-          <label>Estado</label>
-          <select
+            id="estado"
             name="estado"
             value={venta.estado}
             onChange={(e) => {
               setVenta({ ...venta, estado: e.target.value });
-            }}
-            style={{
-              padding: "8px",
-              borderRadius: "4px",
-              border:
-                venta.estado === "encargo"
-                  ? "2px solid #2196F3"
-                  : "1px solid #ddd",
             }}
           >
             <option value="venta">Venta</option>
@@ -412,9 +391,10 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
         {(venta.estado === "separado" || venta.estado === "encargo") &&
           carrito.length <= 0 && (
             <>
-              <div>
-                <label>Abono</label>
+              <div className="form-field">
+                <label htmlFor="abono">Abono</label>
                 <input
+                  id="abono"
                   type="number"
                   name="abono"
                   value={venta.abono}
@@ -423,22 +403,35 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
                   max={totalVenta}
                 />
               </div>
-              <div>
-                <label>Saldo</label>
+              <div className="form-field">
+                <label htmlFor="saldo">Saldo</label>
                 <input
+                  id="saldo"
                   type="number"
                   name="saldo"
                   value={venta.saldo}
                   readOnly
-                  style={{ backgroundColor: "#f0f0f0" }}
                 />
               </div>
             </>
           )}
-
-        <div>
-          <label>Cliente (Opcional)</label>
+        <div className="form-field">
+          <label htmlFor="metodoPago">Método de Pago</label>
+          <select
+            id="metodoPago"
+            name="metodoPago"
+            value={venta.metodoPago}
+            onChange={handleChange}
+          >
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="cliente">Cliente (Opcional)</label>
           <input
+            id="cliente"
             name="cliente"
             value={venta.cliente}
             onChange={handleChange}
@@ -449,19 +442,9 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
       <button
         type="button"
         onClick={agregarAlCarrito}
-        style={{
-          padding: "12px 24px",
-          backgroundColor: "#2196F3",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          fontSize: "16px",
-          cursor: "pointer",
-          marginRight: "10px",
-          fontWeight: "bold",
-        }}
+        className="btn-primary add-cart-btn"
       >
-        ➕ AGREGAR AL CARRITO
+        <i className="fa-solid fa-cart-plus" /> Agregar al carrito
       </button>
       <button
         type="button"

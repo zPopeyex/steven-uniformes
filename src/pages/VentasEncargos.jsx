@@ -16,7 +16,6 @@ import VentasForm from "../components/VentasForm";
 import VentasTable from "../components/VentasTable";
 import EncargosTable from "../components/EncargosTable";
 import Escaner from "../components/Escaner";
-import CardTable from "../components/CardTable"; // Ajusta la ruta si es necesario
 import { useAuth } from "../context/AuthContext.jsx";
 
 const VentasEncargos = () => {
@@ -57,20 +56,6 @@ const VentasEncargos = () => {
       ventas.reduce((sum, v) => sum + v.precio * v.cantidad, 0)
     );
   }, [ventas]);
-
-  useEffect(() => {
-    const btns = document.querySelectorAll(".sales-tab-btn");
-    btns.forEach((btn) => {
-      btn.classList.toggle(
-        "active",
-        btn.dataset.salesTab === `${tabActiva}-tab`
-      );
-    });
-    const contents = document.querySelectorAll(".sales-tab-content");
-    contents.forEach((c) => {
-      c.style.display = c.id === `${tabActiva}-tab` ? "block" : "none";
-    });
-  }, [tabActiva]);
 
   // Escanear QR
   const handleQRDetectado = (codigo) => {
@@ -222,36 +207,40 @@ const VentasEncargos = () => {
     <div className="sales-card">
       <header className="card-header">
         <h2 className="card-title">
-          <span className="icon">💰</span> Gestión de Ventas y Encargos
+          <i className="fa-solid fa-receipt icon" /> Gestión de Ventas y Encargos
         </h2>
         <button
           onClick={() => setMostrarEscaner(!mostrarEscaner)}
-          className="btn-primary"
+          className="btn-qr"
+          aria-label={mostrarEscaner ? "Cerrar escáner" : "Escanear código QR"}
         >
-          {mostrarEscaner ? "❌ Cerrar Escáner" : "📷 Escanear QR"}
+          <i className="fa-solid fa-qrcode" />
+          {mostrarEscaner ? " Cerrar" : " Escanear QR"}
         </button>
       </header>
 
       {mostrarEscaner && <Escaner onScan={handleQRDetectado} />}
 
-      <div className="sales-tab-controls">
+      <div className="sales-toggle" role="tablist">
         <button
-          className="sales-tab-btn active"
-          data-sales-tab="ventas-tab"
+          className={`tab-btn ${tabActiva === "ventas" ? "active" : ""}`}
+          role="tab"
+          aria-selected={tabActiva === "ventas"}
           onClick={() => setTabActiva("ventas")}
         >
           Ventas
         </button>
         <button
-          className="sales-tab-btn"
-          data-sales-tab="encargos-tab"
+          className={`tab-btn ${tabActiva === "encargos" ? "active" : ""}`}
+          role="tab"
+          aria-selected={tabActiva === "encargos"}
           onClick={() => setTabActiva("encargos")}
         >
           Encargos
         </button>
       </div>
 
-      <div className="sales-tab-content" id="ventas-tab">
+      <div id="ventas-tab" role="tabpanel" hidden={tabActiva !== "ventas"}>
         <VentasForm
           productoEscaneado={productoEscaneado}
           onAgregar={handleAgregarVenta}
@@ -267,7 +256,7 @@ const VentasEncargos = () => {
           role={role}
         />
       </div>
-      <div className="sales-tab-content" id="encargos-tab">
+      <div id="encargos-tab" role="tabpanel" hidden={tabActiva !== "encargos"}>
         <EncargosTable
           encargos={encargos}
           onActualizarEstado={(id, estado) =>
