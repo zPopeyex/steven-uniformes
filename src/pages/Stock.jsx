@@ -48,7 +48,7 @@ const Stock = () => {
       setTimeout(() => setLoading(false), 100);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribe(); // Limpia el listener al desmontar
   }, []);
 
   const { byPlantel, labelPlantel } = useMemo(() => {
