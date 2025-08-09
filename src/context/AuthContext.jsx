@@ -131,6 +131,7 @@ export const AuthProvider = ({ children }) => {
   // ---- Login con Google ----
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" }); // Fuerza selector de cuenta (prompt=select_account)
     const result = await signInWithPopup(auth, provider);
     const userRef = doc(db, "users", result.user.uid);
     const snap = await getDoc(userRef);
