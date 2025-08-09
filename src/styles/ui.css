@@ -547,22 +547,73 @@ input:checked + .slider:before {
   margin-top: 20px;
 }
 
-.encargo-detail {
+/* Ventas summary table */
+.resumen-ventas .table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.resumen-ventas .table th {
+  background: #f7f9fc;
+  font-weight: 600;
+}
+
+.resumen-ventas .table tr:hover {
+  background: var(--blue-light);
+}
+
+.venta-detail {
   background: #fff;
   border-radius: var(--radius);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   padding: 16px;
-  margin: 16px 0;
+  margin: 12px 0;
+}
+
+.venta-detail .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .venta-detail .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-ghost {
+  background: #fff;
+  color: var(--blue);
+  border: 1px solid #d7e3ff;
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.btn-ghost:hover {
+  background: var(--blue-light);
+}
+
+/* Encargo detail card */
+.encargo-detail {
+  background: var(--blue-light);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .encargo-head {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  margin-bottom: 16px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .encargo-head {
     grid-template-columns: 1fr;
   }
@@ -589,29 +640,31 @@ input:checked + .slider:before {
 .pill {
   background: #e6f4ff;
   color: #2185d0;
-  border: none;
   border-radius: 999px;
-  padding: 4px 12px;
-  cursor: pointer;
+  padding: 6px 12px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.9em;
+  gap: 8px;
 }
 
-.tabla-encargos {
-  width: 100%;
-  border-collapse: collapse;
+.pill--ghost {
+  background: #fff;
+  border: 1px solid #d7e3ff;
+  color: var(--blue);
 }
 
-.tabla-encargos th,
-.tabla-encargos td {
-  padding: 8px;
-  text-align: left;
-}
-
-.tabla-encargos tbody tr:hover {
+.pill--ghost:hover {
   background: var(--blue-light);
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .badge--pending {
@@ -629,10 +682,18 @@ input:checked + .slider:before {
   color: #21ba45;
 }
 
-.expand-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
+.tabla-encargos {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-encargos th,
+.tabla-encargos td {
+  padding: 8px;
+  text-align: left;
+}
+
+.tabla-encargos tbody tr:hover {
+  background: var(--blue-light);
 }
 
