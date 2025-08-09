@@ -19,6 +19,12 @@ const InventarioTable = ({ productos = [], onEliminar, role }) => {
     });
   };
 
+  const filas = [...productos].sort((a, b) => {
+    if (!a.fechaHora?.seconds) return 1;
+    if (!b.fechaHora?.seconds) return -1;
+    return b.fechaHora.seconds - a.fechaHora.seconds;
+  });
+
   return (
     <table className="st-inv-table">
       <thead>
@@ -35,13 +41,17 @@ const InventarioTable = ({ productos = [], onEliminar, role }) => {
         </tr>
       </thead>
       <tbody>
-        {[...productos]
-          .sort((a, b) => {
-            if (!a.fechaHora?.seconds) return 1;
-            if (!b.fechaHora?.seconds) return -1;
-            return b.fechaHora.seconds - a.fechaHora.seconds;
-          })
-          .map((p, index) => {
+        {filas.length === 0 ? (
+          <tr>
+            <td
+              colSpan={role === "Admin" ? 9 : 8}
+              style={{ textAlign: "center", padding: "12px", color: "#666" }}
+            >
+              Sin resultados
+            </td>
+          </tr>
+        ) : (
+          filas.map((p, index) => {
             const cantidad = parseInt(p.cantidad || 0);
             const precio = parseInt(p.precio || 0);
             const total = precio * cantidad;
@@ -69,7 +79,8 @@ const InventarioTable = ({ productos = [], onEliminar, role }) => {
                 )}
               </tr>
             );
-          })}
+          })
+        )}
       </tbody>
     </table>
   );
