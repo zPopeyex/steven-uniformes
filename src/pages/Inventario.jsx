@@ -1,5 +1,5 @@
 // 📄 src/pages/Inventario.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   collection,
   getDocs,
@@ -16,11 +16,23 @@ import InventarioForm from "../components/InventarioForm";
 import InventarioTable from "../components/InventarioTable";
 import { useAuth } from "../context/AuthContext.jsx";
 import "../styles/inventario.css";
+import { FaFilter } from "react-icons/fa";
+
+const removeDiacritics = (s) =>
+  String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ñ/g, "n")
+    .replace(/Ñ/g, "N");
+
+const norm = (s) => removeDiacritics(String(s || "").trim().toLowerCase());
 
 const Inventario = () => {
   const [inventario, setInventario] = useState([]);
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
   const [productoInicial, setProductoInicial] = useState(null);
+  const [search, setSearch] = useState("");
+  const inputRef = useRef(null);
   const { role } = useAuth();
 
   const cargarInventario = async () => {
@@ -144,6 +156,21 @@ const Inventario = () => {
     }
   };
 
+  const filteredInventario = useMemo(() => {
+    const terms = norm(search).split(/\s+/).filter(Boolean);
+    if (!terms.length) return inventario;
+    return inventario.filter((row) => {
+      const haystack = [row.colegio, row.prenda, row.talla]
+        .map(norm)
+        .join(" ");
+      return terms.every((t) => haystack.includes(t));
+    });
+  }, [inventario, search]);
+
+  const handleFilterClick = () => {
+    inputRef.current?.focus();
+  };
+
   return (
     <div className="st-inv-page">
       <div className="st-inv-card">
@@ -190,18 +217,21 @@ const Inventario = () => {
           </svg>
           <h2 className="st-inv-card-title">Historial de ingreso de inventario</h2>
         </div>
-        <div className="st-inv-history-bar">
+        <div className="card-controls">
           <input
+            ref={inputRef}
             type="text"
-            className="st-inv-field st-inv-search"
-            placeholder="Buscar..."
-            aria-label="Buscar"
+            placeholder="Buscar plantel o producto…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="button" className="st-inv-btn-outline">Filtrar</button>
+          <button type="button" onClick={handleFilterClick}>
+            <FaFilter /> Filtrar
+          </button>
         </div>
         <div className="st-inv-table-wrapper">
           <InventarioTable
-            productos={inventario}
+            productos={filteredInventario}
             onEliminar={handleEliminar}
             role={role}
           />
