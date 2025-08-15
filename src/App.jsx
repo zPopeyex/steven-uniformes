@@ -6,6 +6,8 @@ import Stock from "./pages/Stock";
 import Catalogo from "./pages/Catalogo";
 import VentasEncargos from "./pages/VentasEncargos";
 import UserManagement from "./pages/UserManagement";
+import Modistas from "./pages/Modistas"; // ← NUEVA IMPORTACIÓN
+import ReportesModistas from "./pages/ReportesModistas"; // ← NUEVA IMPORTACIÓN
 import { useAuth } from "./context/AuthContext.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -76,6 +78,22 @@ function App() {
             element={
               <RoleRoute requiredPermissions={["catalogo"]}>
                 <Catalogo />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/modistas"
+            element={
+              <RoleRoute requiredPermissions={["modistas"]}>
+                <Modistas />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reportes-modistas"
+            element={
+              <RoleRoute requiredPermissions={["reportes"]}>
+                <ReportesModistas />
               </RoleRoute>
             }
           />
