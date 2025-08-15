@@ -52,9 +52,7 @@ const VentasEncargos = () => {
   }, []);
 
   useEffect(() => {
-    setTotalVentas(
-      ventas.reduce((sum, v) => sum + v.precio * v.cantidad, 0)
-    );
+    setTotalVentas(ventas.reduce((sum, v) => sum + v.precio * v.cantidad, 0));
   }, [ventas]);
 
   // Escanear QR
@@ -207,15 +205,18 @@ const VentasEncargos = () => {
     <div className="sales-card">
       <header className="card-header">
         <h2 className="card-title">
-          <i className="fa-solid fa-receipt icon" /> Gestión de Ventas y Encargos
+          <i className="fa-solid fa-receipt icon" /> Gestión de Ventas y
+          Encargos
         </h2>
         <button
           onClick={() => setMostrarEscaner(!mostrarEscaner)}
           className="btn-qr"
-          aria-label={mostrarEscaner ? "Cerrar escáner" : "Escanear código QR"}
+          aria-label={
+            mostrarEscaner ? "Cerrar escáner" : "  Escanear código de barras"
+          }
         >
           <i className="fa-solid fa-qrcode" />
-          {mostrarEscaner ? " Cerrar" : " Escanear QR"}
+          {mostrarEscaner ? " Cerrar" : " Escanear código de barras"}
         </button>
       </header>
 

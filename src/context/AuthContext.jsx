@@ -11,9 +11,17 @@ import {
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db, GoogleAuthProvider } from "../firebase/firebaseConfig";
 
-// ---- Permisos base por rol ----
+// ---- Permisos base por rol (ACTUALIZADO CON MODISTAS) ----
 const DEFAULT_PERMISSIONS = {
-  Admin: ["inventario", "stock", "ventas", "catalogo", "usuarios"],
+  Admin: [
+    "inventario",
+    "stock",
+    "ventas",
+    "catalogo",
+    "usuarios",
+    "modistas",
+    "reportes",
+  ],
   Vendedor: ["ventas"],
   Usuario: [],
 };
@@ -81,11 +89,11 @@ export const AuthProvider = ({ children }) => {
 
             setRole(userRole);
             setPermissions(userPermissions);
-              setName(userName);
+            setName(userName);
           } catch (error) {
             if (error.code === "permission-denied") {
               console.warn(
-                "Insufficient permissions to fetch user data. Using defaults.",
+                "Insufficient permissions to fetch user data. Using defaults."
               );
               const fallbackRole = "Usuario";
               const defaultPerms = getDefaultPermissions(fallbackRole);
@@ -101,7 +109,7 @@ export const AuthProvider = ({ children }) => {
                     name: currentUser?.displayName || "",
                     email: currentUser?.email || "",
                   },
-                  { merge: true },
+                  { merge: true }
                 );
               } catch (writeError) {
                 console.warn("Unable to create user document:", writeError);
@@ -113,7 +121,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           setRole(null);
           setPermissions([]);
-            setName(null);
+          setName(null);
           setUser(null);
         }
         setLoading(false);
@@ -138,10 +146,10 @@ export const AuthProvider = ({ children }) => {
 
     let userRole = snap.exists() ? normalizeRole(snap.data().role) : "Vendedor";
     userRole = userRole || "Vendedor";
-      let userPermissions = snap.exists() ? snap.data().permissions : undefined;
-      let userName = snap.exists()
-        ? snap.data().name || snap.data().nickname
-        : result.user.displayName;
+    let userPermissions = snap.exists() ? snap.data().permissions : undefined;
+    let userName = snap.exists()
+      ? snap.data().name || snap.data().nickname
+      : result.user.displayName;
 
     if (userRole === "Admin") {
       userPermissions = DEFAULT_PERMISSIONS.Admin;
@@ -160,34 +168,30 @@ export const AuthProvider = ({ children }) => {
       userPermissions = getDefaultPermissions(userRole);
       await setDoc(
         userRef,
-          {
-            role: userRole,
-            permissions: userPermissions,
-            name: userName || "",
-            email: result.user.email,
-          },
+        {
+          role: userRole,
+          permissions: userPermissions,
+          name: userName || "",
+          email: result.user.email,
+        },
         { merge: true }
       );
     } else if (!userPermissions || userPermissions.length === 0) {
       userPermissions = getDefaultPermissions(userRole);
-      await setDoc(
-        userRef,
-          { permissions: userPermissions },
-          { merge: true }
-        );
-      } else if (!userName && result.user.displayName) {
-        userName = result.user.displayName;
-        await setDoc(userRef, { name: userName }, { merge: true });
-      }
+      await setDoc(userRef, { permissions: userPermissions }, { merge: true });
+    } else if (!userName && result.user.displayName) {
+      userName = result.user.displayName;
+      await setDoc(userRef, { name: userName }, { merge: true });
+    }
 
     setRole(userRole);
     setPermissions(userPermissions);
-      await setDoc(
-        userRef,
-        { name: userName || "", email: result.user.email },
-        { merge: true }
-      );
-      setName(userName || "");
+    await setDoc(
+      userRef,
+      { name: userName || "", email: result.user.email },
+      { merge: true }
+    );
+    setName(userName || "");
   };
 
   // ---- Registro con email y contraseña ----
@@ -204,12 +208,12 @@ export const AuthProvider = ({ children }) => {
           name: nameValue || "",
           email: result.user.email,
         },
-        { merge: true },
+        { merge: true }
       );
     } catch (error) {
       if (error.code === "permission-denied") {
         console.warn(
-          "Insufficient permissions to create user document. Skipping Firestore write.",
+          "Insufficient permissions to create user document. Skipping Firestore write."
         );
       } else {
         throw error;
@@ -236,13 +240,13 @@ export const AuthProvider = ({ children }) => {
         loginWithGoogle,
         register,
         resetPassword,
-          logout,
-          name,
-          email: user?.email || null,
-        }}
-      >
-        {children}
-      </AuthContext.Provider>
+        logout,
+        name,
+        email: user?.email || null,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
 };
 
