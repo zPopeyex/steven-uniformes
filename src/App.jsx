@@ -11,6 +11,8 @@ import ReportesModistas from "./pages/ReportesModistas"; // ‚Üê NUEVA IMPORTACI√
 import { useAuth } from "./context/AuthContext.jsx";
 import RoleRoute from "./components/RoleRoute.jsx";
 import Sidebar from "./components/Sidebar.jsx";
+import Proveedores from "./pages/Proveedores";
+import Gastos from "./pages/Gastos";
 
 function App() {
   const { user, role, logout, name } = useAuth();
@@ -105,6 +107,8 @@ function App() {
               </RoleRoute>
             }
           />
+          <Route path="/proveedores" element={<Proveedores />} />
+          <Route path="/gastos" element={<Gastos />} />
         </Routes>
       </main>
     </div>
