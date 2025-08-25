@@ -25,7 +25,12 @@ const removeDiacritics = (s) =>
     .replace(/ñ/g, "n")
     .replace(/Ñ/g, "N");
 
-const norm = (s) => removeDiacritics(String(s || "").trim().toLowerCase());
+const norm = (s) =>
+  removeDiacritics(
+    String(s || "")
+      .trim()
+      .toLowerCase()
+  );
 
 const Inventario = () => {
   const [inventario, setInventario] = useState([]);
@@ -160,9 +165,7 @@ const Inventario = () => {
     const terms = norm(search).split(/\s+/).filter(Boolean);
     if (!terms.length) return inventario;
     return inventario.filter((row) => {
-      const haystack = [row.colegio, row.prenda, row.talla]
-        .map(norm)
-        .join(" ");
+      const haystack = [row.colegio, row.prenda, row.talla].map(norm).join(" ");
       return terms.every((t) => haystack.includes(t));
     });
   }, [inventario, search]);
@@ -215,7 +218,9 @@ const Inventario = () => {
             <circle cx="12" cy="12" r="9" />
             <path d="M12 7v5l3 3" />
           </svg>
-          <h2 className="st-inv-card-title">Historial de ingreso de inventario</h2>
+          <h2 className="st-inv-card-title">
+            Historial de ingreso de inventario
+          </h2>
         </div>
         <div className="card-controls">
           <input

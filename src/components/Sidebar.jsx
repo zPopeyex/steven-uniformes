@@ -9,6 +9,8 @@ import {
   FaUsers,
   FaUserTie,
   FaChartBar,
+  FaTruck,
+  FaMoneyBillAlt,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext.jsx";
 import "../styles/sidebar.css";
@@ -108,6 +110,28 @@ const Sidebar = () => {
           >
             <FaUsers className="menu-icon" />
             <span>Usuarios</span>
+          </NavLink>
+        )}
+        {permissions.includes("usuarios") && (
+          <NavLink
+            to="/proveedores"
+            className={({ isActive }) =>
+              `menu-item ${isActive ? "active" : ""}`
+            }
+          >
+            <FaTruck className="menu-icon" />
+            <span>Proveedores</span>
+          </NavLink>
+        )}
+        {permissions.includes("usuarios") && (
+          <NavLink
+            to="/gastos"
+            className={({ isActive }) =>
+              `menu-item ${isActive ? "active" : ""}`
+            }
+          >
+            <FaMoneyBillAlt className="menu-icon" />
+            <span>Gastos</span>
           </NavLink>
         )}
       </nav>
