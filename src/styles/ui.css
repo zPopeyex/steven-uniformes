@@ -1,3 +1,14 @@
+/* Paleta corporativa */
+:root {
+  --brand-green: #21ba45;
+  /* verde */
+  --brand-blue: #0052CC;
+  /* azul (por si quieres otro badge) */
+  --badge-h: 28px;
+    /* alto de todas las badges */
+    --badge-w: 80px;
+    /* ancho de todas las badges (ajústalo a gusto) */
+}
 /* Spinner with four rotating dots */
 .spinner {
   width: 40px;
@@ -68,24 +79,66 @@
 
 /* Role badges */
 .badge {
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  color: #fff;
+  display: inline-flex;
+    align-items: center;
+    justify-content: center;/* centra el texto */
+    gap: .35rem;
+    padding: 0 12px;/* padding horizontal; el alto lo da la variable */
+    /* alto/anchura */
+    border-radius: 9999px;
+    /* pill */
+    font: 600 13px/1 "Segoe UI", system-ui, Arial, sans-serif;
+    border: 0.9px solid transparent;
+    user-select: none;
+    white-space: nowrap;
+    
+}
+/* Tamaño fijo */
+.badge--fixed {
+  width: var(--badge-w);
+  /* Si prefieres que se expanda hasta un máximo, usa min-width en vez de width:
+     min-width: var(--badge-w);
+  */
+  overflow: hidden;
+  /* evita que se desborde */
+  text-overflow: ellipsis;
+  /* agrega … cuando no cabe */
 }
 .badge.admin {
-  background-color: #2563eb;
+color: var(--brand-blue);
+  background: rgba(0, 82, 204, .10);
+  border-color: rgba(0, 82, 204, .35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6);
+  
 }
 .badge.super-admin {
-  background-color: #4f46e5;
+  background-color: #be991d;
 }
 .badge.dueno {
   background-color: #7e22ce;
+}
+.badge.vendedor {
+color: var(--brand-green);
+  background: rgba(33, 186, 69, .10);
+  /* fondo muy suave */
+  border-color: rgba(33, 186, 69, .35);
+  /* borde clarito */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6);
 }
 .badge.usuario {
   background-color: #6b7280;
 }
 
+/* Tamaños opcionales */
+.badge--sm {
+  padding: .18rem .45rem;
+  font-size: 12px;
+}
+
+.badge--lg {
+  padding: .35rem .8rem;
+  font-size: 14px;
+}
 /* Permission chips */
 .chip {
   display: inline-block;

@@ -172,7 +172,7 @@ const UserManagement = () => {
               const displayName =
                 user.name || user.nickname || user.email || "Sin nombre";
               const displayEmail = user.email || "Sin correo";
-              const roleClass = `badge ${(user.role || "usuario")
+              const roleClass = `badge badge--fixed ${(user.role || "usuario")
                 .toLowerCase()
                 .replace(/\s+/g, "-")
                 .replace("ñ", "n")}`;
@@ -195,7 +195,9 @@ const UserManagement = () => {
                       <input
                         type="checkbox"
                         checked={user.active}
-                        onChange={() => handleToggleActive(user.id, user.active)}
+                        onChange={() =>
+                          handleToggleActive(user.id, user.active)
+                        }
                       />
                       <span className="slider"></span>
                     </label>
@@ -242,12 +244,12 @@ const UserManagement = () => {
             <h3 style={{ marginTop: 0 }}>
               {editingUser ? "Editar Usuario" : "Crear Usuario"}
             </h3>
-            <form
-              onSubmit={editingUser ? handleUpdateUser : handleCreateUser}
-            >
+            <form onSubmit={editingUser ? handleUpdateUser : handleCreateUser}>
               {editingUser ? (
                 <>
-                  <p><strong>{editingUser.name}</strong></p>
+                  <p>
+                    <strong>{editingUser.name}</strong>
+                  </p>
                   <p style={{ fontSize: "0.9rem", color: "#555" }}>
                     {editingUser.email}
                   </p>
@@ -291,12 +293,10 @@ const UserManagement = () => {
                   <label key={opt.key} style={{ marginRight: 10 }}>
                     <input
                       type="checkbox"
-                      checked={
-                        (editingUser
-                          ? editingUser.permissions
-                          : newUser.permissions
-                        ).includes(opt.key)
-                      }
+                      checked={(editingUser
+                        ? editingUser.permissions
+                        : newUser.permissions
+                      ).includes(opt.key)}
                       onChange={() =>
                         editingUser
                           ? toggleEditPermission(opt.key)
