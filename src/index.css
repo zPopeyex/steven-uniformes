@@ -130,13 +130,13 @@ button:focus-visible {
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 0.8rem;
-  color: #fff;
+  color: #ff0000;
 }
 .badge.admin {
   background-color: #2563eb;
 }
 .badge.super-admin {
-  background-color: #4f46e5;
+  background-color: #fffb00;
 }
 .badge.dueno {
   background-color: #7e22ce;
