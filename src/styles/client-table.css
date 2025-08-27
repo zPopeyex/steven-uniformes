@@ -1,0 +1,122 @@
+/* client-table.css */
+
+/* Estilos para la tabla de clientes mejorada */
+.client-name-cell {
+    position: relative;
+    padding-right: 40px !important;
+    min-width: 250px;
+}
+
+.client-name-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    position: relative;
+}
+
+.client-name-text {
+    color: var(--primary);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    margin-right: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 0;
+    font-size: inherit;
+    font-family: inherit;
+}
+
+.client-name-text:hover {
+    color: var(--primary-dark, #1d4ed8);
+}
+
+.expand-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.expand-icon:hover {
+    color: var(--primary, #2563eb);
+    transform: scale(1.1);
+}
+
+.expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.expand-icon.expanded:hover {
+    transform: rotate(180deg) scale(1.1);
+}
+
+/* Para centrar el texto en el medio de la celda */
+.client-name-wrapper.centered {
+    justify-content: center;
+}
+
+.client-name-wrapper.centered .client-name-text {
+    text-align: center;
+    margin-right: 0;
+}
+
+.client-name-wrapper.centered .expand-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.client-name-wrapper.centered .expand-icon.expanded {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.client-name-wrapper.centered .expand-icon:hover {
+    transform: translateY(-50%) scale(1.1);
+}
+
+.client-name-wrapper.centered .expand-icon.expanded:hover {
+    transform: translateY(-50%) rotate(180deg) scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .client-name-cell {
+        min-width: 200px;
+        padding-right: 35px !important;
+    }
+
+    .expand-icon {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+/* Sticky column */
+.table th:first-child,
+.table td:first-child {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 1;
+}
+
+.table th:first-child {
+    background: #f8fafc;
+}
+
+.table tbody tr:hover td:first-child {
+    background: #f8fafc;
+}
