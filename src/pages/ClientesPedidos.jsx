@@ -32,7 +32,7 @@ import {
   setDoc,
   runTransaction,
 } from "firebase/firestore";
-
+import "../styles/client-table.css";
 import "../styles/sistema-completo.css";
 import ClientModal from "../components/clients/ClientModal";
 import InvoicePreview from "../components/invoices/InvoicePreview";
@@ -51,7 +51,7 @@ export default function ClientesPedidos() {
   const [expandedClients, setExpandedClients] = useState({});
 
   const [offscreenInvoice, setOffscreenInvoice] = useState(null);
-  const DISCORD_WEBHOOK_URL = import.meta.env.VITE_DISCORD_WEBHOOK_URL || ""; // o pega directo el URL si no usarás .env
+  const DISCORD_WEBHOOK_URL = import.meta.env.VITE_DISCORD_WEBHOOK_URL || "";
 
   // Datos
   const [clientes, setClientes] = useState([]);
@@ -61,13 +61,35 @@ export default function ClientesPedidos() {
     encargos: null,
     pedidos: null,
   });
+  // === Estados válidos de pedido ===
+  const PEDIDO_ESTADOS = ["pendiente", "entregado", "pagado"];
+  const ESTADO_EMOJI = {
+    pendiente: "🕒",
+    entregado: "📦",
+    pagado: "✅",
+  };
+
+  const labelEstado = (estado) => `${ESTADO_EMOJI[estado] ?? "📄"} ${estado}`;
+
+  // Cambia el estado en Firestore
+  const updatePedidoEstado = async (pedidoId, nuevoEstado) => {
+    if (!PEDIDO_ESTADOS.includes(nuevoEstado)) return;
+    await updateDoc(doc(db, "pedidos", pedidoId), {
+      estado: nuevoEstado,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+  // --- Modo edición de pedido ---
+  const [editingPedidoId, setEditingPedidoId] = useState(null); // id del doc en Firestore
+  const [editingPedidoNumero, setEditingPedidoNumero] = useState(null); // preserva el "0001"
+  const [editingPedidoCreatedAt, setEditingPedidoCreatedAt] = useState(null); // preserva fecha original
+
   // === Consecutivo seguro 4 dígitos para pedidos ===
   const getNextPedidoConsecutivo = async () => {
     const ref = doc(db, "counters", "pedidos");
     const next = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) {
-        // primera vez
         tx.set(ref, { value: 1 });
         return 1;
       }
@@ -76,30 +98,23 @@ export default function ClientesPedidos() {
       tx.update(ref, { value: n });
       return n;
     });
-    return String(next).padStart(4, "0"); // "0001", "0002", ...
+    return String(next).padStart(4, "0");
   };
 
   // ===== Helper: precio por Plantel + Producto + Talla =====
   const getPrecioFromCatalog = (plantel, producto, talla) => {
     const arr = catalogIndex.byColegio?.[plantel]?.[producto] || [];
     const m = arr.find((x) => (x.talla || "").trim() === (talla || "").trim());
-    // Asegura número
     return m ? Number(m.precio) || 0 : 0;
   };
 
   // ====== WhatsApp & PDF/Print ======
   const INVOICE_HOST_ID = "invoice-print-host";
 
-  // Texto plano legible para WhatsApp
-  // Texto legible para WhatsApp / fallback
-
-  // Abre una ventana con SOLO el contenido del preview y lanza print()
-  // El usuario podrá "Guardar como PDF" desde el diálogo de impresión.
   const handleDownloadPDF = () => {
     const node = document.getElementById(INVOICE_HOST_ID);
     if (!node) return;
 
-    // Copiamos estilos actuales (style y link stylesheet)
     const styles = Array.from(
       document.querySelectorAll("style, link[rel='stylesheet']")
     )
@@ -135,7 +150,6 @@ export default function ClientesPedidos() {
     win.onload = () => win.print();
   };
 
-  // Arma mensaje de WhatsApp; si el cliente tiene teléfono, abre chat directo
   const handleShareWhatsApp = () => {
     const data = showInvoicePreview?.data;
     if (!data) return;
@@ -149,13 +163,13 @@ export default function ClientesPedidos() {
     window.open(url, "_blank");
   };
 
-  // Botón "Imprimir" puede reutilizar el flujo PDF/print
   const handlePrint = () => handleDownloadPDF();
-  // ===== Catálogo dinámico desde Firestore (productos_catalogo) =====
+
+  // ===== Catálogo dinámico desde Firestore =====
   const [catalogoDocs, setCatalogoDocs] = useState([]);
-  const [plantelesAll, setPlantelesAll] = useState([]); // colegios
+  const [plantelesAll, setPlantelesAll] = useState([]);
   const [catalogIndex, setCatalogIndex] = useState({
-    byColegio: {}, // colegio -> prenda -> [{talla, precio}]
+    byColegio: {},
   });
   const ordenTallas = [
     "6",
@@ -170,6 +184,7 @@ export default function ClientesPedidos() {
     "XL",
     "XXL",
   ];
+
   // Forms
   const [clientForm, setClientForm] = useState({
     nombre: "",
@@ -197,7 +212,7 @@ export default function ClientesPedidos() {
     ],
   });
 
-  // Suscripciones Firestore (realtime)
+  // Suscripciones Firestore
   useEffect(() => {
     const qClientes = query(
       collection(db, "clientes"),
@@ -215,7 +230,6 @@ export default function ClientesPedidos() {
       setPedidos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
-    // invoice_templates como 3 docs: ventas / encargos / pedidos
     const unsubTemplates = [
       onSnapshot(doc(db, "invoice_templates", "ventas"), (d) => {
         setPlantillas((p) => ({
@@ -244,12 +258,12 @@ export default function ClientesPedidos() {
     };
   }, []);
 
-  // Cargar catálogo real y construir índice (plantel->producto->tallas)
+  // Cargar catálogo
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "productos_catalogo"), (snap) => {
       const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setCatalogoDocs(docs);
-      // byColegio
+
       const idx = {};
       const plantelesSet = new Set();
       docs.forEach((it) => {
@@ -263,7 +277,7 @@ export default function ClientesPedidos() {
         if (!idx[colegio][prenda]) idx[colegio][prenda] = [];
         idx[colegio][prenda].push({ talla, precio });
       });
-      // ordenar tallas por ordenTallas
+
       Object.keys(idx).forEach((col) => {
         Object.keys(idx[col]).forEach((pr) => {
           idx[col][pr].sort((a, b) => {
@@ -390,6 +404,15 @@ export default function ClientesPedidos() {
       }));
     }
   };
+  const handleDeletePedido = async (id, numero) => {
+    if (
+      !confirm(
+        `¿Eliminar el pedido ${numero || id}? Esta acción no se puede deshacer.`
+      )
+    )
+      return;
+    await deleteDoc(doc(db, "pedidos", id));
+  };
 
   const handleItemChange = (index, field, value) => {
     const items = [...pedidoForm.items];
@@ -410,12 +433,11 @@ export default function ClientesPedidos() {
       alert("Seleccione un cliente");
       return;
     }
+
     const total = calculatePedidoTotal();
     const cliente = clientes.find((c) => c.id === pedidoForm.clienteId);
 
-    // 1) obtener consecutivo 0001, 0002, ...
-    const numero = await getNextPedidoConsecutivo();
-
+    // Payload común
     const payload = {
       clienteId: pedidoForm.clienteId,
       clienteNombre: cliente?.nombre || "",
@@ -425,31 +447,83 @@ export default function ClientesPedidos() {
       saldo: total - (parseFloat(pedidoForm.abono) || 0),
       estado: pedidoForm.estado,
       observaciones: pedidoForm.observaciones,
-      createdAt: new Date().toISOString(),
-      numero, // 👈 nuevo campo
     };
 
-    const ref = await addDoc(collection(db, "pedidos"), payload);
+    try {
+      if (editingPedidoId) {
+        // 🔄 ACTUALIZAR (NO romper número ni fecha original)
+        await updateDoc(doc(db, "pedidos", editingPedidoId), {
+          ...payload,
+          numero: editingPedidoNumero || null,
+          createdAt: editingPedidoCreatedAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
 
-    // reset
+        alert(`Pedido ${editingPedidoNumero || editingPedidoId} actualizado`);
+      } else {
+        // 🆕 CREAR (consecutivo 0001, 0002, ...)
+        const numero = await getNextPedidoConsecutivo();
+        await addDoc(collection(db, "pedidos"), {
+          ...payload,
+          createdAt: new Date().toISOString(),
+          numero,
+        });
+        alert(`Pedido ${numero} guardado`);
+      }
+    } finally {
+      // Reset formulario y salir de edición si aplica
+      setEditingPedidoId(null);
+      setEditingPedidoNumero(null);
+      setEditingPedidoCreatedAt(null);
+
+      setPedidoForm({
+        clienteId: "",
+        observaciones: "",
+        abono: 0,
+        estado: "pendiente",
+        items: [
+          {
+            producto: "",
+            plantel: "",
+            talla: "",
+            cantidad: 1,
+            vrUnitario: 0,
+            vrTotal: 0,
+          },
+        ],
+      });
+    }
+  };
+
+  // Carga un pedido en el formulario para editar
+  const startEditPedido = (pedido) => {
+    setActiveModule("pedidos"); // te lleva al tab de pedidos
+    setEditingPedidoId(pedido.id);
+    setEditingPedidoNumero(pedido.numero || null);
+    setEditingPedidoCreatedAt(pedido.createdAt || null);
+
     setPedidoForm({
-      clienteId: "",
-      observaciones: "",
-      abono: 0,
-      estado: "pendiente",
-      items: [
-        {
-          producto: "",
-          plantel: "",
-          talla: "",
-          cantidad: 1,
-          vrUnitario: 0,
-          vrTotal: 0,
-        },
-      ],
+      clienteId: pedido.clienteId || "",
+      observaciones: pedido.observaciones || "",
+      abono: Number(pedido.abono) || 0,
+      estado: pedido.estado || "pendiente",
+      items: (pedido.items || []).map((it) => ({
+        producto: it.producto || "",
+        plantel: it.plantel || "",
+        talla: it.talla || "",
+        cantidad: Number(it.cantidad) || 1,
+        vrUnitario: Number(it.vrUnitario) || 0,
+        vrTotal:
+          Number(it.vrTotal) ||
+          (Number(it.cantidad) || 0) * (Number(it.vrUnitario) || 0),
+      })),
     });
 
-    alert(`Pedido ${numero} guardado`);
+    // scroll al formulario
+    requestAnimationFrame(() => {
+      const el = document.querySelector(".card .card-title"); // título "Nuevo Pedido"
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   // Plantillas
@@ -473,7 +547,7 @@ export default function ClientesPedidos() {
     alert("Plantilla guardada");
   };
 
-  // Filtros/búsqueda (cliente-side)
+  // Filtros
   const filteredClientes = useMemo(
     () =>
       clientes.filter(
@@ -497,27 +571,23 @@ export default function ClientesPedidos() {
     [pedidos, searchTerm]
   );
 
-  // ---- Utilidades comunes ----
+  // Utilidades
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const renderInvoiceToCanvas = async (data, tipo = "pedidos") => {
-    // 1) renderizamos el preview fuera de pantalla
     setOffscreenInvoice({ tipo, data });
-    await pause(60); // da tiempo al render
+    await pause(60);
     const host = document.getElementById("invoice-offscreen");
-    // 2) capturamos a canvas
     const canvas = await html2canvas(host, {
       scale: 2,
       backgroundColor: "#fff",
       useCORS: true,
       logging: false,
     });
-    // 3) limpiamos
     setOffscreenInvoice(null);
     return canvas;
   };
 
-  /** Genera el PDF en memoria como Blob y anota el link de WhatsApp */
   const buildInvoicePdfBlob = async (data, tipo = "pedidos") => {
     const canvas = await renderInvoiceToCanvas(data, tipo);
     const imgData = canvas.toDataURL("image/png");
@@ -534,7 +604,6 @@ export default function ClientesPedidos() {
 
     pdf.addImage(imgData, "PNG", margin, margin, imgW, imgH, "", "FAST");
 
-    // 🔗 Hotspot inflado (igual que en downloadInvoicePDF)
     try {
       const host = document.getElementById("invoice-offscreen");
       const a = host?.querySelector('a[data-ctype="company-wa"]');
@@ -563,13 +632,12 @@ export default function ClientesPedidos() {
     return pdf.output("blob");
   };
 
-  /** Sube el PDF al canal de Discord vía webhook y devuelve el URL público del archivo */
   const uploadPdfToDiscord = async (blob, filename) => {
     if (!DISCORD_WEBHOOK_URL) throw new Error("Falta VITE_DISCORD_WEBHOOK_URL");
 
     const fd = new FormData();
     fd.append("file", blob, filename);
-    fd.append("payload_json", JSON.stringify({ content: "" })); // mensaje vacío
+    fd.append("payload_json", JSON.stringify({ content: "" }));
 
     const res = await fetch(DISCORD_WEBHOOK_URL, { method: "POST", body: fd });
     if (!res.ok) {
@@ -582,7 +650,82 @@ export default function ClientesPedidos() {
     return url;
   };
 
-  /** Texto legible (fallback por si falla Discord) */
+  /** Intenta acortar con is.gd y si falla usa TinyURL. Si todo falla, retorna la limpia. */
+  const shortenUrl = async (url) => {
+    const target = url; // mantener query de Discord
+
+    const tryShort = async (api) => {
+      const r = await fetch(api);
+      if (!r.ok) throw new Error("shortener failed");
+      const t = (await r.text()).trim();
+      if (/^https?:\/\//i.test(t)) return t;
+      throw new Error("invalid short url");
+    };
+
+    try {
+      return await tryShort(
+        `https://is.gd/create.php?format=simple&url=${encodeURIComponent(
+          target
+        )}`
+      );
+    } catch {
+      try {
+        return await tryShort(
+          `https://tinyurl.com/api-create.php?url=${encodeURIComponent(target)}`
+        );
+      } catch {
+        return target; // fallback: sin acortar pero funcional
+      }
+    }
+  };
+
+  /** Deduce género del cliente: f/m/null */
+  const getClienteGenero = (cli) => {
+    const g = (cli?.genero || cli?.sexo || "").toLowerCase();
+    if (g.startsWith("f")) return "f";
+    if (g.startsWith("m")) return "m";
+    return null;
+  };
+
+  /** Mensaje formal con negritas (sin comillas) y sin líneas en blanco extra */
+  const buildWhatsAppFormalMessage = ({ data, shortUrl }) => {
+    const numero = data?.numero || data?.id || "";
+    const cli = data?.cliente || {};
+    const nombre = cli?.nombre || cli?.displayName || "Cliente";
+    const genero = getClienteGenero(cli); // "f" | "m" | null
+
+    const saludo =
+      genero === "f"
+        ? `Estimada *Sra. ${nombre}*:`
+        : genero === "m"
+        ? `Estimado *Sr. ${nombre}*:`
+        : `Estimado(a) *${nombre}*:`; // fallback
+
+    const atentoAtenta =
+      genero === "f" ? "atenta" : genero === "m" ? "atento" : "atento(a)";
+    const companyName =
+      (typeof COMPANY !== "undefined" && COMPANY?.name) ||
+      "Steven todo en Uniformes.";
+    const companyPhone =
+      (typeof COMPANY !== "undefined" && COMPANY?.phonePretty) || "3172841355";
+
+    return [
+      saludo + "\n",
+      "Reciba un cordial saludo.\n",
+      `Por medio del presente, me permito hacerle llegar la factura correspondiente al\n*Pedido No. ${numero}*.\n`,
+      "Podrá acceder al documento a través del siguiente enlace:",
+      "*[* " + shortUrl + " *]* \n" || "",
+      `Quedo ${atentoAtenta} a cualquier consulta o aclaración que pueda requerir.`,
+      "Agradezco su atención y confianza.",
+      "Saludos cordiales,\n",
+      `*${companyName}*`,
+      "Representante legal.",
+      companyPhone,
+    ]
+      .filter(Boolean)
+      .join("\n"); // <- solo \n, sin dobles saltos
+  };
+
   const buildInvoiceText = (rawData) => {
     const data = rawData || {};
     const numero = data.numero || data.id || "";
@@ -634,34 +777,61 @@ export default function ClientesPedidos() {
       .join("\n");
   };
 
-  /** WhatsApp ➜ genera PDF ➜ sube a Discord ➜ abre chat con link al PDF */
+  // Adivina tratamiento si no existe: muy simple; mejor guarda "tratamiento" en el cliente.
+  const guessFemale = (nombre = "") => /a$/i.test(nombre.trim());
+  const getTratamiento = (cliente = {}) => {
+    if (cliente.tratamiento === "Sr." || cliente.tratamiento === "Sra.") {
+      return cliente.tratamiento;
+    }
+    const nombre = (cliente.nombre || "").trim().split(/\s+/)[0] || "";
+    return guessFemale(nombre) ? "Sra." : "Sr.";
+  };
+
+  // Saludo completo + línea descriptiva de la factura
+  const buildSaludoWhatsApp = (cliente = {}, numero = "") => {
+    const nom = (cliente.nombre || "").trim();
+    const [nombre = "", apellido = ""] = nom.split(/\s+/);
+    const tratamiento = getTratamiento(cliente);
+    // Si no hay apellido, no lo forzamos
+    const nombreMostrar = [nombre, apellido].filter(Boolean).join(" ");
+    return (
+      `${tratamiento} ${nombreMostrar}, tenga un cordial saludo. ` +
+      `Me permito enviarle la factura "Pedido No. ${numero}", ` +
+      `que encontrará a continuación en el siguiente enlace:`
+    );
+  };
+
+  /** WhatsApp ➜ genera PDF ➜ sube a Discord ➜ limpia y acorta URL ➜ abre chat con mensaje formal */
   const shareWhatsAppViaDiscord = async (data, tipo = "pedidos") => {
-    // Abrimos la ventana primero para que el navegador no bloquee el popup
-    const waWin = window.open("about:blank", "_blank");
+    const waWin = window.open("about:blank", "_blank"); // abre antes para evitar bloqueo
 
     try {
       const numero = data.numero || data.id || Date.now();
       const blob = await buildInvoicePdfBlob(data, tipo);
       const fileUrl = await uploadPdfToDiscord(blob, `Pedido_${numero}.pdf`);
 
+      // 1) limpia query de Discord  2) intenta acortar
+      const shortUrl = await shortenUrl(fileUrl);
+
       const phoneRaw = data?.cliente?.telefono || "";
       const digits = phoneRaw.replace(/\D/g, "");
       const base =
         digits.length >= 8 ? `https://wa.me/${digits}` : `https://wa.me/`;
-      const text = `Pedido ${numero}\n${fileUrl}`;
-      const waUrl = `${base}?text=${encodeURIComponent(text)}`;
+
+      const message = buildWhatsAppFormalMessage({ data, shortUrl });
+      const waUrl = `${base}?text=${encodeURIComponent(message)}`;
 
       if (waWin) waWin.location.href = waUrl;
       else window.open(waUrl, "_blank");
     } catch (err) {
       console.error(err);
-      // Fallback: texto plano si falló la subida
-      const text = buildInvoiceText(data);
+      // Fallback de texto (sin link acortado)
       const phoneRaw = data?.cliente?.telefono || "";
       const digits = phoneRaw.replace(/\D/g, "");
       const base =
         digits.length >= 8 ? `https://wa.me/${digits}` : `https://wa.me/`;
-      const waUrl = `${base}?text=${encodeURIComponent(text)}`;
+      const message = buildWhatsAppFormalMessage({ data, shortUrl: "" });
+      const waUrl = `${base}?text=${encodeURIComponent(message)}`;
       if (waWin) waWin.location.href = waUrl;
       else window.open(waUrl, "_blank");
     }
@@ -683,7 +853,6 @@ export default function ClientesPedidos() {
 
     pdf.addImage(imgData, "PNG", margin, margin, imgW, imgH, "", "FAST");
 
-    // 🔗 Hotspot clicable sobre el número de WhatsApp
     try {
       const host = document.getElementById("invoice-offscreen");
       const a = host?.querySelector('a[data-ctype="company-wa"]');
@@ -691,13 +860,10 @@ export default function ClientesPedidos() {
         const hostRect = host.getBoundingClientRect();
         const r = a.getBoundingClientRect();
 
-        // Coordenadas relativas dentro del host
         const relLeft = r.left - hostRect.left;
         const relTop = r.top - hostRect.top;
 
-        // Escala de px (canvas) -> pt (PDF) (horizontal/vertical iguales)
         const k = imgW / canvas.width;
-        // Padding adicional en px (DOM)
         const PAD = 8;
         const x = margin + (relLeft - PAD) * k;
         const y = margin + (relTop - PAD / 2) * k;
@@ -705,10 +871,9 @@ export default function ClientesPedidos() {
         const h = (r.height + PAD) * k;
 
         const url = a.href || "https://wa.me/573172841355";
-        pdf.link(x, y, Math.max(w, 60), Math.max(h, 16), { url }); // 👈 mínimos razonables
+        pdf.link(x, y, Math.max(w, 60), Math.max(h, 16), { url });
       }
     } catch (e) {
-      // Si algo falla, solo seguimos sin link clicable
       console.warn("No se pudo anotar link en PDF:", e);
     }
 
@@ -716,51 +881,6 @@ export default function ClientesPedidos() {
     pdf.save(`Pedido_${numero}.pdf`);
   };
 
-  // Texto legible (si decides no subir archivo)
-  //   const buildInvoiceText = (data) => {
-  //     const numero = data.numero || data.id || "";
-  //     const fecha = new Date(data.createdAt || Date.now()).toLocaleDateString();
-  //     const cli = data.cliente
-  //       ? `Cliente: ${data.cliente.nombre} (${data.cliente.telefono || "-"})`
-  //       : "";
-  //     const items = (data.items || [])
-  //       .map(
-  //         (it) =>
-  //           `• ${it.cantidad} x ${it.producto}${
-  //             it.talla ? ` Talla ${it.talla}` : ""
-  //           }${it.plantel ? ` - ${it.plantel}` : ""} = $${(
-  //             it.vrTotal || 0
-  //           ).toLocaleString()}`
-  //       )
-  //       .join("\n");
-  //     const tot = `Total: $${(data.total || 0).toLocaleString()}   Abono: $${(
-  //       data.abono || 0
-  //     ).toLocaleString()}   Saldo: $${(data.saldo || 0).toLocaleString()}`;
-  //     const obs = data.observaciones ? `Obs: ${data.observaciones}` : "";
-  //     return [`PEDIDO ${numero} - ${fecha}`, cli, items, tot, obs]
-  //       .filter(Boolean)
-  //       .join("\n");
-  //   };
-
-  // (OPCIONAL) Subir PNG a Storage y compartir el link por WhatsApp
-  const shareWhatsAppWithImageLink = async (data, tipo = "pedidos") => {
-    const canvas = await renderInvoiceToCanvas(data, tipo);
-    const pngDataURL = canvas.toDataURL("image/png"); // base64
-    const numero = data.numero || data.id || Date.now();
-    const path = `invoices/Pedido_${numero}.png`;
-    const ref = sRef(storage, path);
-    await uploadString(ref, pngDataURL, "data_url");
-    const publicURL = await getDownloadURL(ref);
-
-    const text = `Pedido ${numero}\n${publicURL}`;
-    const phoneRaw = data?.cliente?.telefono || "";
-    const digits = phoneRaw.replace(/\D/g, "");
-    const base =
-      digits.length >= 8 ? `https://wa.me/${digits}` : `https://wa.me/`;
-    window.open(`${base}?text=${encodeURIComponent(text)}`, "_blank");
-  };
-
-  // (POR DEFECTO) Solo mensaje de texto sin archivo
   const shareWhatsAppTextOnly = (data) => {
     const text = buildInvoiceText(data);
     const phoneRaw = data?.cliente?.telefono || "";
@@ -857,29 +977,38 @@ export default function ClientesPedidos() {
                 {filteredClientes.map((cliente) => (
                   <React.Fragment key={cliente.id}>
                     <tr>
-                      <td>
-                        <button
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: "var(--primary)",
-                            cursor: "pointer",
-                            fontWeight: 600,
-                          }}
-                          onClick={() =>
-                            setExpandedClients((p) => ({
-                              ...p,
-                              [cliente.id]: !p[cliente.id],
-                            }))
-                          }
-                        >
-                          {expandedClients[cliente.id] ? (
-                            <FaChevronUp />
-                          ) : (
-                            <FaChevronDown />
-                          )}{" "}
-                          {cliente.nombre}
-                        </button>
+                      <td className="client-name-cell">
+                        <div className="client-name-wrapper centered">
+                          <button
+                            className="client-name-text"
+                            title={cliente.nombre}
+                            onClick={() =>
+                              setExpandedClients((p) => ({
+                                ...p,
+                                [cliente.id]: !p[cliente.id],
+                              }))
+                            }
+                          >
+                            {cliente.nombre}
+                          </button>
+                          <div
+                            className={`expand-icon ${
+                              expandedClients[cliente.id] ? "expanded" : ""
+                            }`}
+                            onClick={() =>
+                              setExpandedClients((p) => ({
+                                ...p,
+                                [cliente.id]: !p[cliente.id],
+                              }))
+                            }
+                          >
+                            {expandedClients[cliente.id] ? (
+                              <FaChevronUp />
+                            ) : (
+                              <FaChevronDown />
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td>{cliente.cedulaNit || "-"}</td>
                       <td>{cliente.telefono || "-"}</td>
@@ -954,6 +1083,8 @@ export default function ClientesPedidos() {
                                         background: "#fff",
                                         borderRadius: 8,
                                         border: "1px solid var(--border)",
+                                        fontWeight: 600,
+                                        color: "var(--primary)",
                                       }}
                                     >
                                       <div
@@ -963,7 +1094,9 @@ export default function ClientesPedidos() {
                                         }}
                                       >
                                         <span>
-                                          <strong>{pedido.id}</strong>
+                                          <strong>
+                                            {pedido.numero || pedido.id}
+                                          </strong>
                                         </span>
                                         <span
                                           className={`badge badge-${
@@ -1230,9 +1363,7 @@ export default function ClientesPedidos() {
                         value={item.talla}
                         onChange={(e) => {
                           const talla = e.target.value;
-                          // 1) fija talla
                           handleItemChange(idx, "talla", talla);
-                          // 2) busca precio en catálogo y autollenA vrUnitario
                           const precio = getPrecioFromCatalog(
                             item.plantel,
                             item.producto,
@@ -1384,13 +1515,46 @@ export default function ClientesPedidos() {
               </div>
             </div>
 
-            <button
-              className="btn btn-primary"
-              onClick={handleSavePedido}
-              style={{ width: "100%" }}
-            >
-              <FaSave /> Guardar Pedido
-            </button>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleSavePedido}
+                style={{ flex: 1 }}
+              >
+                <FaSave />{" "}
+                {editingPedidoId ? "Actualizar Pedido" : "Guardar Pedido"}
+              </button>
+
+              {editingPedidoId && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setEditingPedidoId(null);
+                    setEditingPedidoNumero(null);
+                    setEditingPedidoCreatedAt(null);
+                    // Dejar el form limpio
+                    setPedidoForm({
+                      clienteId: "",
+                      observaciones: "",
+                      abono: 0,
+                      estado: "pendiente",
+                      items: [
+                        {
+                          producto: "",
+                          plantel: "",
+                          talla: "",
+                          cantidad: 1,
+                          vrUnitario: 0,
+                          vrTotal: 0,
+                        },
+                      ],
+                    });
+                  }}
+                >
+                  Cancelar edición
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Tabla pedidos */}
@@ -1443,22 +1607,33 @@ export default function ClientesPedidos() {
                       <td>${pedido.total?.toLocaleString()}</td>
                       <td>${pedido.abono?.toLocaleString()}</td>
                       <td>${pedido.saldo?.toLocaleString()}</td>
-                      <td>
-                        <span
-                          className={`badge badge-${
-                            pedido.estado === "pagado"
-                              ? "success"
-                              : pedido.estado === "entregado"
-                              ? "warning"
-                              : "danger"
-                          }`}
+                      <td className="status-cell">
+                        <label
+                          htmlFor={`estado-${pedido.id}`}
+                          className="sr-only"
                         >
-                          {pedido.estado}
-                        </span>
+                          Estado del pedido
+                        </label>
+                        <select
+                          id={`estado-${pedido.id}`}
+                          className="status-emoji"
+                          value={pedido.estado}
+                          onChange={(e) =>
+                            updatePedidoEstado(pedido.id, e.target.value)
+                          }
+                          title="Cambiar estado"
+                        >
+                          {PEDIDO_ESTADOS.map((st) => (
+                            <option key={st} value={st}>
+                              {labelEstado(st)}
+                            </option>
+                          ))}
+                        </select>
                       </td>
+
                       <td>
                         <div
-                          className="actions-group"
+                          className="actions-group pedido-actions"
                           style={{ display: "flex", gap: 8 }}
                         >
                           <button
@@ -1472,6 +1647,7 @@ export default function ClientesPedidos() {
                                 data: { ...pedido, cliente: cli },
                               });
                             }}
+                            title="Ver"
                           >
                             <FaEye />
                           </button>
@@ -1486,6 +1662,7 @@ export default function ClientesPedidos() {
                                 "pedidos"
                               );
                             }}
+                            title="PDF"
                           >
                             <FaFilePdf />
                           </button>
@@ -1501,8 +1678,26 @@ export default function ClientesPedidos() {
                                 "pedidos"
                               );
                             }}
+                            title="WhatsApp"
                           >
                             <FaWhatsapp />
+                          </button>
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => startEditPedido(pedido)}
+                            title="Editar pedido"
+                          >
+                            <FaEdit />
+                          </button>
+
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() =>
+                              handleDeletePedido(pedido.id, pedido.numero)
+                            }
+                            title="Eliminar pedido"
+                          >
+                            <FaTrash />
                           </button>
                         </div>
                       </td>
@@ -1638,6 +1833,7 @@ export default function ClientesPedidos() {
           </div>
         </div>
       )}
+
       {/* Render offscreen para generar PDF/PNG sin abrir modal */}
       <div
         id="invoice-offscreen"
@@ -1645,7 +1841,7 @@ export default function ClientesPedidos() {
           position: "fixed",
           left: "-10000px",
           top: 0,
-          width: "794px", // ~A4 a 96 dpi
+          width: "794px",
           background: "#fff",
           padding: "24px",
         }}
@@ -1671,7 +1867,6 @@ export default function ClientesPedidos() {
               </button>
             </div>
             <div className="modal-body">
-              {/* IMPORTANTE: este ID lo usa handleDownloadPDF */}
               <div id={INVOICE_HOST_ID}>
                 <InvoicePreview
                   template={
