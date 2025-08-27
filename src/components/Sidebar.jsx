@@ -134,6 +134,17 @@ const Sidebar = () => {
             <span>Gastos</span>
           </NavLink>
         )}
+        {permissions.includes("usuarios") && (
+          <NavLink
+            to="/clientes-pedidos"
+            className={({ isActive }) =>
+              `menu-item ${isActive ? "active" : ""}`
+            }
+          >
+            <FaMoneyBillAlt className="menu-icon" />
+            <span>Clientes pedidos</span>
+          </NavLink>
+        )}
       </nav>
     </aside>
   );
