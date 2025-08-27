@@ -13,6 +13,7 @@ import RoleRoute from "./components/RoleRoute.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Proveedores from "./pages/Proveedores";
 import Gastos from "./pages/Gastos";
+import ClientesPedidos from "./pages/ClientesPedidos";
 
 function App() {
   const { user, role, logout, name } = useAuth();
@@ -109,6 +110,7 @@ function App() {
           />
           <Route path="/proveedores" element={<Proveedores />} />
           <Route path="/gastos" element={<Gastos />} />
+          <Route path="/clientes-pedidos" element={<ClientesPedidos />} />
         </Routes>
       </main>
     </div>
