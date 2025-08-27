@@ -43,7 +43,7 @@ export default function InvoicePreview({ template, data }) {
             <div style={{ fontSize: 13, color: "#374151" }}>
               NIT: {COMPANY.nit}
             </div>
-            <a>📞</a>
+
             <a
               href={`https://wa.me/${COMPANY.phoneWa}`}
               target="_blank"
@@ -55,12 +55,12 @@ export default function InvoicePreview({ template, data }) {
                 textDecoration: "underline",
                 cursor: "pointer", // 👈 añade cursor
                 display: "inline-block", // 👈 agrega caja
-                padding: "2px 6px", // 👈 agranda la caja del enlace
+                padding: "4px 8px", // 👈 agranda la caja del enlace
                 fontWeight: 600,
               }}
               title="Chatear por WhatsApp"
             >
-              {COMPANY.phonePretty}
+              📞 {COMPANY.phonePretty}
             </a>
           </div>
         </div>

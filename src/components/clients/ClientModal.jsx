@@ -23,6 +23,17 @@ export default function ClientModal({
 
         <div className="modal-body">
           <div className="form-group">
+            <label className="form-label">Tratamiento</label>
+            <select
+              className="form-select"
+              value={clientForm.tratamiento || "Sr."}
+              onChange={(e) =>
+                setClientForm({ ...clientForm, tratamiento: e.target.value })
+              }
+            >
+              <option>Sr.</option>
+              <option>Sra.</option>
+            </select>
             <label className="form-label">Nombre *</label>
             <input
               type="text"
