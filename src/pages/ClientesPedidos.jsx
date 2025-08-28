@@ -153,14 +153,13 @@ export default function ClientesPedidos() {
   const handleShareWhatsApp = () => {
     const data = showInvoicePreview?.data;
     if (!data) return;
-    const text = buildInvoiceText(data);
-    const phoneRaw = data?.cliente?.telefono || "";
-    const digits = phoneRaw.replace(/\D/g, "");
 
-    const base =
-      digits.length >= 8 ? `https://wa.me/${digits}` : `https://wa.me/`;
-    const url = `${base}?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+    const digits = String(data?.cliente?.telefono || "").replace(/\D/g, "");
+    const msisdn = digits.startsWith("57") ? digits : `57${digits}`;
+    const base = `https://api.whatsapp.com/send?phone=${msisdn}`;
+
+    const textEncoded = buildWaTextEncoded({ data, shortUrl: "" });
+    window.open(`${base}&text=${textEncoded}`, "_blank");
   };
 
   const handlePrint = () => handleDownloadPDF();
@@ -686,6 +685,90 @@ export default function ClientesPedidos() {
     if (g.startsWith("m")) return "m";
     return null;
   };
+  // Emojis en secuencias UTF-16 (seguras si el archivo no está en UTF-8)
+  const EMOJI = {
+    wave: "\uD83D\uDC4B\uD83C\uDFFC", // 👋🏼
+    link: "\uD83D\uDD17", // 🔗
+    memo: "\uD83D\uDDD2\uFE0F", // 🗒️
+    scales: "\u2696\uFE0F", // ⚖️
+    phone: "\uD83D\uDCDE", // 📞
+  };
+  // Emojis como BYTES UTF-8 percent-encodados (para WhatsApp)
+  const EMOJI_HEX = {
+    wave: "%F0%9F%91%8B%F0%9F%8F%BC", // 👋🏼
+    link: "%F0%9F%94%97", // 🔗
+    memo: "%F0%9F%97%92%EF%B8%8F", // 🗒️
+    scales: "%E2%9A%96%EF%B8%8F", // ⚖️
+    phone: "%F0%9F%93%9E", // 📞
+  };
+  // --- Texto WA ya percent-encodado + emojis en crudo (hex) ---
+  const buildWaTextEncoded = ({ data, shortUrl }) => {
+    const numero = data?.numero || data?.id || "";
+    const cli = data?.cliente || {};
+    const nombre = cli?.nombre || cli?.displayName || "Cliente";
+    const g = (cli?.genero || cli?.sexo || "").toLowerCase();
+    const genero = g.startsWith("f") ? "f" : g.startsWith("m") ? "m" : null;
+
+    const saludo =
+      genero === "f"
+        ? `Estimada *Sra. ${nombre}*:`
+        : genero === "m"
+        ? `Estimado *Sr. ${nombre}*:`
+        : `Estimado(a)\n *${nombre}*:`; // fallback
+
+    const atentoAtenta =
+      genero === "f" ? "atenta" : genero === "m" ? "atento" : "atento(a)";
+    const companyName =
+      (typeof COMPANY !== "undefined" && COMPANY?.name) ||
+      "Steven todo en Uniformes.";
+    const companyPhone =
+      (typeof COMPANY !== "undefined" && COMPANY?.phonePretty) || "3172841355";
+
+    const segs = [
+      saludo,
+      "\n\n",
+      "Reciba un cordial saludo. ",
+      { raw: EMOJI_HEX.wave },
+      "\n\n",
+      "Por medio del presente, me permito hacerle llegar la factura correspondiente al\n",
+      { raw: EMOJI_HEX.memo },
+      ` *Pedido No. ${numero}*.\n\n`,
+      "Podrá acceder al documento a través del siguiente enlace:\n",
+      { raw: EMOJI_HEX.link },
+      ` *[* ${shortUrl || ""} *]*\n\n`,
+      `Quedo ${atentoAtenta} a cualquier consulta o aclaración que pueda requerir.\n`,
+      "Agradezco su atención y confianza.\n",
+      "Saludos cordiales,\n\n",
+      `*${companyName}*\n`,
+      { raw: EMOJI_HEX.scales },
+      " Representante legal.\n",
+      { raw: EMOJI_HEX.phone },
+      ` ${companyPhone}`,
+    ];
+
+    // Strings normales -> encodeURIComponent, los {raw} (emojis) se inyectan tal cual
+    return segs
+      .map((s) => (typeof s === "string" ? encodeURIComponent(s) : s.raw))
+      .join("");
+  };
+
+  /** Normaliza teléfono a MSISDN colombiano y arma la base de WhatsApp */
+  const buildWaBase = (phone) => {
+    const digits = String(phone || "").replace(/\D/g, "");
+    if (digits.length < 8) {
+      // sin número válido → pantalla de WhatsApp genérica
+      return "https://api.whatsapp.com/send";
+    }
+    const msisdn = digits.startsWith("57") ? digits : `57${digits}`;
+    return `https://api.whatsapp.com/send?phone=${msisdn}`;
+  };
+
+  /** Agrega el texto a la URL de WhatsApp con codificación y normalización NFC */
+  const withWaText = (base, text) => {
+    const safe = String(text || "").normalize("NFC");
+    const sep = base.includes("?") ? "&" : "?";
+    return `${base}${sep}text=${encodeURIComponent(safe)}`;
+  };
 
   /** Mensaje formal con negritas (sin comillas) y sin líneas en blanco extra */
   const buildWhatsAppFormalMessage = ({ data, shortUrl }) => {
@@ -709,21 +792,30 @@ export default function ClientesPedidos() {
     const companyPhone =
       (typeof COMPANY !== "undefined" && COMPANY?.phonePretty) || "3172841355";
 
-    return [
-      saludo + "\n",
-      "Reciba un cordial saludo.\n",
-      `Por medio del presente, me permito hacerle llegar la factura correspondiente al\n*Pedido No. ${numero}*.\n`,
-      "Podrá acceder al documento a través del siguiente enlace:",
-      "*[* " + shortUrl + " *]* \n" || "",
-      `Quedo ${atentoAtenta} a cualquier consulta o aclaración que pueda requerir.`,
-      "Agradezco su atención y confianza.",
-      "Saludos cordiales,\n",
-      `*${companyName}*`,
-      "Representante legal.",
-      companyPhone,
-    ]
-      .filter(Boolean)
-      .join("\n"); // <- solo \n, sin dobles saltos
+    const segs = [
+      saludo,
+      "\n\n",
+      "Reciba un cordial saludo. ",
+      { raw: EMOJI_HEX.wave },
+      "\n\n",
+      "Por medio del presente, me permito hacerle llegar la factura correspondiente al\n",
+      { raw: EMOJI_HEX.memo },
+      ` *Pedido No. ${numero}*.\n\n`,
+      "Podrá acceder al documento a través del siguiente enlace:\n",
+      { raw: EMOJI_HEX.link },
+      ` *[* ${shortUrl || ""} *]*\n\n`,
+      `Quedo ${atentoAtenta} a cualquier consulta o aclaración que pueda requerir.\n`,
+      "Agradezco su atención y confianza.\n",
+      "Saludos cordiales,\n\n",
+      `*${companyName}*\n`,
+      { raw: EMOJI_HEX.scales },
+      " Representante legal.\n",
+      { raw: EMOJI_HEX.phone },
+      ` ${companyPhone}`,
+    ];
+    return segs
+      .map((s) => (typeof s === "string" ? encodeURIComponent(s) : s.raw))
+      .join("");
   };
 
   const buildInvoiceText = (rawData) => {
@@ -805,6 +897,11 @@ export default function ClientesPedidos() {
   const shareWhatsAppViaDiscord = async (data, tipo = "pedidos") => {
     const waWin = window.open("about:blank", "_blank"); // abre antes para evitar bloqueo
 
+    const phoneRaw = data.cliente?.telefono || "";
+    const digits = phoneRaw.replace(/\D/g, "");
+    const msisdn = digits.startsWith("57") ? digits : `57${digits}`;
+    const base = `https://api.whatsapp.com/send?phone=${msisdn}`;
+
     try {
       const numero = data.numero || data.id || Date.now();
       const blob = await buildInvoicePdfBlob(data, tipo);
@@ -812,26 +909,16 @@ export default function ClientesPedidos() {
 
       // 1) limpia query de Discord  2) intenta acortar
       const shortUrl = await shortenUrl(fileUrl);
-
-      const phoneRaw = data?.cliente?.telefono || "";
-      const digits = phoneRaw.replace(/\D/g, "");
-      const base =
-        digits.length >= 8 ? `https://wa.me/${digits}` : `https://wa.me/`;
-
-      const message = buildWhatsAppFormalMessage({ data, shortUrl });
-      const waUrl = `${base}?text=${encodeURIComponent(message)}`;
+      // 👇 texto YA percent-encodado (emojis en crudo)
+      const textEncoded = buildWaTextEncoded({ data, shortUrl });
+      const waUrl = `${base}&text=${textEncoded}`;
 
       if (waWin) waWin.location.href = waUrl;
       else window.open(waUrl, "_blank");
     } catch (err) {
       console.error(err);
-      // Fallback de texto (sin link acortado)
-      const phoneRaw = data?.cliente?.telefono || "";
-      const digits = phoneRaw.replace(/\D/g, "");
-      const base =
-        digits.length >= 8 ? `https://wa.me/${digits}` : `https://wa.me/`;
-      const message = buildWhatsAppFormalMessage({ data, shortUrl: "" });
-      const waUrl = `${base}?text=${encodeURIComponent(message)}`;
+      const textEncoded = buildWaTextEncoded({ data, shortUrl: "" });
+      const waUrl = `${base}&text=${textEncoded}`;
       if (waWin) waWin.location.href = waUrl;
       else window.open(waUrl, "_blank");
     }
@@ -885,9 +972,12 @@ export default function ClientesPedidos() {
     const text = buildInvoiceText(data);
     const phoneRaw = data?.cliente?.telefono || "";
     const digits = phoneRaw.replace(/\D/g, "");
-    const base =
-      digits.length >= 8 ? `https://wa.me/${digits}` : `https://wa.me/`;
-    window.open(`${base}?text=${encodeURIComponent(text)}`, "_blank");
+    const msisdn = digits.startsWith("57") ? digits : `57${digits}`;
+    const base = `https://api.whatsapp.com/send?phone=${msisdn}`;
+    window.open(
+      `${base}&text=${encodeURIComponent(text.normalize("NFC"))}`,
+      "_blank"
+    );
   };
 
   return (
