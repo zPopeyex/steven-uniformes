@@ -18,7 +18,8 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
 
   // NUEVO: Estado para cliente seleccionado
   const [selectedCliente, setSelectedCliente] = useState(null);
-
+  // Abono global para TODO el carrito cuando es encargo/separado
+  const [abonoCarrito, setAbonoCarrito] = useState(0);
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [catalogos, setCatalogos] = useState({
     colegios: [],
@@ -202,13 +203,19 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     if (venta.estado === "encargo") {
       // si YA hay cliente seleccionado, NO mostrar el modal
       if (selectedCliente) {
+        // ✅ usar el abono y totales del CARRITO (no los del primer ítem)
         const total = carrito.reduce(
           (acc, it) =>
             acc + (Number(it.precio) || 0) * (Number(it.cantidad) || 0),
           0
         );
-        const abono = Number(venta.abono) || 0;
-        const saldo = Math.max(total - abono, 0);
+        const abonoItems = carrito.reduce(
+          (acc, it) => acc + (Number(it.abono) || 0),
+          0
+        );
+        const abonoGlobal = Number(abonoCarrito) || 0;
+        const abono = abonoItems + abonoGlobal; // lo que realmente se ha abonado (items + global)
+        const saldo = Math.max(total - abono, 0); // saldo real
 
         const encargo = {
           createdAt: new Date().toISOString(),
@@ -227,6 +234,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             cantidad: Number(i.cantidad) || 0,
             vrUnitario: Number(i.precio) || 0,
             vrTotal: (Number(i.precio) || 0) * (Number(i.cantidad) || 0),
+            entregado: !!i.entregado, // <— clave para la badge
           })),
           total,
           abono,
@@ -238,12 +246,16 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
         if (ok) {
           setCarrito([]);
           setSelectedCliente(null);
+          setAbonoCarrito(0); // reset del abono global
         }
         return; // <- MUY IMPORTANTE: No sigas a mostrar el modal
       }
 
       // si NO hay cliente seleccionado, se deja el modal como fallback
-      setDatosEncargo((prev) => ({ ...prev, abono: Number(venta.abono) || 0 }));
+      setDatosEncargo((prev) => ({
+        ...prev,
+        abono: Number(abonoCarrito) || 0,
+      }));
       setMostrarFormularioEncargo(true);
       return;
     }
@@ -268,7 +280,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     }
   };
 
-  // Registrar el encargo correctamente
+  // Registrar el encargo correctamente (modal fallback)
   const registrarEncargo = async () => {
     if (
       !datosEncargo.nombre ||
@@ -356,6 +368,20 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     )?.cantidad || 0;
 
   const totalVenta = venta.cantidad * (venta.precio || 0);
+  // === totales basados en SALDOS por ítem ===
+  const totalSaldosCarrito = carrito.reduce((acc, i) => {
+    const itemTotal =
+      i.total ?? (Number(i.precio) || 0) * (Number(i.cantidad) || 0);
+    const itemAbono = Number(i.abono) || 0;
+    // si viene i.saldo explícito, lo usamos; si no, total - abono
+    const itemSaldo = i.saldo != null ? Number(i.saldo) : itemTotal - itemAbono;
+    return acc + itemSaldo;
+  }, 0);
+
+  const saldoCarrito = Math.max(
+    totalSaldosCarrito - Number(abonoCarrito || 0),
+    0
+  );
 
   return (
     <div className="ventas-form">
@@ -684,6 +710,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
           }}
         >
           <h3>Productos en Carrito</h3>
+
           {/* Mostrar cliente seleccionado si existe */}
           {selectedCliente && (
             <div
@@ -848,7 +875,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
                         onChange={() => togglePendienteEntrega(item.id)}
                         style={{
                           transform: "scale(1.3)",
-                          accentColor: "#f44336", // hace que el check sea rojo (opcional)
+                          accentColor: "#f44336",
                           cursor: "pointer",
                         }}
                       />
@@ -910,6 +937,52 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
           </table>
         </div>
       )}
+
+      {/* 🔵 PASO 5: Panel inline de Abono/Saldo global para ENCARGO/SEPARADO */}
+      {(venta.estado === "encargo" || venta.estado === "separado") &&
+        carrito.length > 0 && (
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "14px",
+              border: "1px solid #e5e7eb",
+              borderRadius: "8px",
+              background: "#f9fafb",
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: "12px",
+            }}
+          >
+            <div className="form-field">
+              <label>Total del carrito</label>
+              <input
+                readOnly
+                value={`$${totalSaldosCarrito.toLocaleString("es-CO")}`}
+                style={{ fontWeight: "bold", background: "#eef2ff" }}
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Abono del encargo</label>
+              <input
+                type="number"
+                min={0}
+                max={totalSaldosCarrito}
+                value={abonoCarrito}
+                onChange={(e) => setAbonoCarrito(e.target.value)}
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Saldo</label>
+              <input
+                readOnly
+                value={`$${saldoCarrito.toLocaleString("es-CO")}`}
+                style={{ fontWeight: "bold", background: "#eef2ff" }}
+              />
+            </div>
+          </div>
+        )}
     </div>
   );
 };
