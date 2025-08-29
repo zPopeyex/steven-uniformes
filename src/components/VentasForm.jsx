@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import ClienteComboBox from "./ClienteComboBox";
 
 const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
   const [venta, setVenta] = useState({
@@ -11,10 +12,12 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     cantidad: 1,
     metodoPago: "efectivo",
     estado: "venta",
-    cliente: "",
     abono: 0,
     saldo: 0,
   });
+
+  // NUEVO: Estado para cliente seleccionado
+  const [selectedCliente, setSelectedCliente] = useState(null);
 
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [catalogos, setCatalogos] = useState({
@@ -33,7 +36,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     documento: "",
     formaPago: "",
     abono: 0,
-    saldo: 0, // <-- agrega el valor
+    saldo: 0,
   });
 
   // Cargar datos iniciales
@@ -91,7 +94,6 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     }
   }, [productoEscaneado]);
 
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setVenta((prev) => {
@@ -105,8 +107,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
     });
   };
 
-  // ** Handler para el modal de encargo **
-  // Cambios en los datos del cliente del encargo
+  // Handler para el modal de encargo
   const handleChangeEncargo = (e) => {
     const { name, value } = e.target;
     setDatosEncargo((prev) => ({ ...prev, [name]: value }));
@@ -126,9 +127,8 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
       alert(`Faltan campos requeridos: ${camposFaltantes.join(", ")}`);
       return;
     }
-    // Producto nuevo
-    const totalItem = Number(venta.precio) * Number(venta.cantidad);
 
+    const totalItem = Number(venta.precio) * Number(venta.cantidad);
     const abono =
       venta.estado === "separado" || venta.estado === "encargo"
         ? Number(venta.abono) || 0
@@ -146,15 +146,24 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
       cantidad: Number(venta.cantidad),
       metodoPago: venta.metodoPago,
       estado: venta.estado,
-      cliente: venta.cliente?.trim() || "",
       total: totalItem,
       abono,
       saldo,
       id: Date.now(),
       entregado: true,
+      // NUEVO: incluir información del cliente si está seleccionado
+      clienteId: selectedCliente?.id || null,
+      clienteResumen: selectedCliente
+        ? {
+            nombre: selectedCliente.nombre,
+            telefono: selectedCliente.telefono,
+            documento: selectedCliente.documento,
+          }
+        : null,
     };
 
     setCarrito([...carrito, nuevoItem]);
+
     // Limpiar SOLO producto, NO datos del cliente
     setVenta((prev) => ({
       ...prev,
@@ -183,23 +192,80 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
 
   // Cuando seleccionan "encargo", muestra el modal después del chequeo
   const registrarVenta = async () => {
+    // Validaciones mínimas
+    if (carrito.length === 0) {
+      alert("Agrega al menos un producto al carrito.");
+      return;
+    }
+
+    // ===== Encargo =====
     if (venta.estado === "encargo") {
-      if (carrito.length === 0) {
-        alert(
-          "Agrega al menos un producto al carrito antes de registrar el encargo"
+      // si YA hay cliente seleccionado, NO mostrar el modal
+      if (selectedCliente) {
+        const total = carrito.reduce(
+          (acc, it) =>
+            acc + (Number(it.precio) || 0) * (Number(it.cantidad) || 0),
+          0
         );
-        return;
+        const abono = Number(venta.abono) || 0;
+        const saldo = Math.max(total - abono, 0);
+
+        const encargo = {
+          createdAt: new Date().toISOString(),
+          estado: "pendiente",
+          clienteId: selectedCliente.id,
+          clienteResumen: {
+            nombre: selectedCliente.nombre,
+            telefono: selectedCliente.telefono,
+            documento: selectedCliente.documento,
+            direccion: selectedCliente.direccion || "",
+          },
+          items: carrito.map((i) => ({
+            producto: i.prenda || i.producto || "",
+            plantel: i.colegio || i.plantel || "",
+            talla: i.talla || "",
+            cantidad: Number(i.cantidad) || 0,
+            vrUnitario: Number(i.precio) || 0,
+            vrTotal: (Number(i.precio) || 0) * (Number(i.cantidad) || 0),
+          })),
+          total,
+          abono,
+          saldo,
+          metodoPago: venta.metodoPago || "efectivo",
+        };
+
+        const ok = await onAgregarEncargo(encargo);
+        if (ok) {
+          setCarrito([]);
+          setSelectedCliente(null);
+        }
+        return; // <- MUY IMPORTANTE: No sigas a mostrar el modal
       }
-      setDatosEncargo((prev) => ({
-        ...prev,
-        abono: Number(venta.abono) || 0,
-      }));
+
+      // si NO hay cliente seleccionado, se deja el modal como fallback
+      setDatosEncargo((prev) => ({ ...prev, abono: Number(venta.abono) || 0 }));
       setMostrarFormularioEncargo(true);
       return;
     }
-    // ... resto del código para ventas normales
-    const exito = await onAgregar(carrito);
-    if (exito) setCarrito([]);
+
+    // ===== Venta normal =====
+    const carritoConCliente = carrito.map((i) => ({
+      ...i,
+      clienteId: selectedCliente?.id ?? i.clienteId ?? null,
+      clienteResumen: selectedCliente
+        ? {
+            nombre: selectedCliente.nombre,
+            telefono: selectedCliente.telefono,
+            documento: selectedCliente.documento,
+          }
+        : i.clienteResumen ?? null,
+    }));
+
+    const exito = await onAgregar(carritoConCliente);
+    if (exito) {
+      setCarrito([]);
+      setSelectedCliente(null);
+    }
   };
 
   // Registrar el encargo correctamente
@@ -216,6 +282,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
       alert("Agrega al menos un producto al carrito");
       return;
     }
+
     // Recolectar info del encargo
     const encargoCompleto = {
       cliente: {
@@ -233,7 +300,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
           precio: Number(item.precio),
           cantidad: Number(item.cantidad),
           total: Number(item.precio) * Number(item.cantidad),
-          entregado: item.entregado === undefined ? false : item.entregado, // así como lo tengas en el carrito
+          entregado: item.entregado === undefined ? false : item.entregado,
         };
 
         if (carrito.length === 1) {
@@ -243,7 +310,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             saldo: Number(item.saldo) || 0,
           };
         } else {
-          return base; // sin abono/saldo individual
+          return base;
         }
       }),
 
@@ -252,8 +319,17 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
       saldo:
         carrito.reduce((s, i) => s + (i.total || 0), 0) -
         (Number(datosEncargo.abono) || 0),
+      // NUEVO: incluir clienteId si hay cliente seleccionado del ComboBox
+      clienteId: selectedCliente?.id || null,
+      clienteResumen: selectedCliente
+        ? {
+            nombre: selectedCliente.nombre,
+            telefono: selectedCliente.telefono,
+            documento: selectedCliente.documento,
+          }
+        : null,
     };
-    // Llamar al handler padre
+
     const exito = await onAgregarEncargo(encargoCompleto);
     if (exito) {
       setCarrito([]);
@@ -267,6 +343,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
         abono: 0,
         saldo: 0,
       });
+      setSelectedCliente(null); // Limpiar cliente después de registrar
     }
   };
 
@@ -428,14 +505,14 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
             <option value="tarjeta">Tarjeta</option>
           </select>
         </div>
+
+        {/* NUEVO: Cliente ComboBox */}
         <div className="form-field">
           <label htmlFor="cliente">Cliente (Opcional)</label>
-          <input
-            id="cliente"
-            name="cliente"
-            value={venta.cliente}
-            onChange={handleChange}
-            placeholder="Nombre del cliente"
+          <ClienteComboBox
+            selectedCliente={selectedCliente}
+            onClienteChange={setSelectedCliente}
+            placeholder="Buscar cliente por nombre, teléfono o cédula..."
           />
         </div>
       </div>
@@ -448,19 +525,7 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
       </button>
       <button
         type="button"
-        onClick={() => {
-          if (venta.estado === "encargo") {
-            if (carrito.length === 0) {
-              alert(
-                "Agrega al menos un producto al carrito antes de registrar el encargo"
-              );
-              return;
-            }
-            setMostrarFormularioEncargo(true); // Solo abre el modal
-          } else {
-            registrarVenta(); // Venta y separado van normal
-          }
-        }}
+        onClick={registrarVenta} // ✅ usa la lógica central
         style={{
           padding: "12px 24px",
           backgroundColor: "#4CAF50",
@@ -555,19 +620,34 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
                 <option value="otro">Otro</option>
               </select>
             </div>
-            {/* Opcional: Abono y saldo a nivel de encargo */}
-            {/* <div style={{ marginBottom: "12px" }}>
-              <label>Abono</label>
+            <div style={{ marginBottom: "12px" }}>
+              <label>Abono Total del Encargo</label>
               <input
                 type="number"
                 name="abono"
                 value={datosEncargo.abono}
                 onChange={handleChangeEncargo}
+                min="0"
+                max={carrito.reduce((s, i) => s + (i.total || 0), 0)}
                 style={{ width: "100%", padding: "8px" }}
-                min={0}
-                max={carrito.reduce((s, i) => s + i.total, 0)}
               />
-            </div> */}
+            </div>
+            <div style={{ marginBottom: "12px" }}>
+              <label>Saldo (automático)</label>
+              <input
+                type="number"
+                value={
+                  carrito.reduce((s, i) => s + (i.total || 0), 0) -
+                  (Number(datosEncargo.abono) || 0)
+                }
+                readOnly
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  backgroundColor: "#f0f0f0",
+                }}
+              />
+            </div>
             <div
               style={{
                 display: "flex",
@@ -588,34 +668,6 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
               >
                 Registrar Encargo
               </button>
-              <div style={{ marginBottom: "12px" }}>
-                <label>Abono Total del Encargo</label>
-                <input
-                  type="number"
-                  name="abono"
-                  value={datosEncargo.abono}
-                  onChange={handleChangeEncargo}
-                  min="0"
-                  max={carrito.reduce((s, i) => s + (i.total || 0), 0)}
-                  style={{ width: "100%", padding: "8px" }}
-                />
-              </div>
-              <div style={{ marginBottom: "12px" }}>
-                <label>Saldo (automático)</label>
-                <input
-                  type="number"
-                  value={
-                    carrito.reduce((s, i) => s + (i.total || 0), 0) -
-                    (Number(datosEncargo.abono) || 0)
-                  }
-                  readOnly
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    backgroundColor: "#f0f0f0",
-                  }}
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -632,6 +684,23 @@ const VentasForm = ({ productoEscaneado, onAgregar, onAgregarEncargo }) => {
           }}
         >
           <h3>Productos en Carrito</h3>
+          {/* Mostrar cliente seleccionado si existe */}
+          {selectedCliente && (
+            <div
+              style={{
+                backgroundColor: "#f0f8ff",
+                padding: "10px",
+                borderRadius: "5px",
+                marginBottom: "15px",
+                border: "1px solid #0052cc",
+              }}
+            >
+              <strong>Cliente seleccionado:</strong> {selectedCliente.nombre}
+              {selectedCliente.telefono && ` — ${selectedCliente.telefono}`}
+              {selectedCliente.documento && ` — ${selectedCliente.documento}`}
+            </div>
+          )}
+
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>

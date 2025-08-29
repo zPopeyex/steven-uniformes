@@ -1,6 +1,11 @@
 import React from "react";
 
 export default function InvoicePreview({ template, data }) {
+  // 👇 helpers arriba del render (o en el componente)
+  const pickDisplayNumber = (data) => {
+    // preferimos numeroCorto si existe
+    return data?.numeroCorto ?? data?.numero ?? data?.id ?? "";
+  };
   // Datos fijos de tu empresa
   const COMPANY = {
     name: "Steven Todo en Uniformes",
@@ -8,6 +13,8 @@ export default function InvoicePreview({ template, data }) {
     phonePretty: "317 284 1355",
     phoneWa: "573172841355", // formato internacional para WhatsApp (Colombia: 57)
   };
+  const numero = data.numeroCorto || data.numero || data.id;
+  const items = Array.isArray(data.items) ? data.items : [];
   return (
     <div className="invoice-preview">
       <div
@@ -69,7 +76,8 @@ export default function InvoicePreview({ template, data }) {
         <div className="invoice-details" style={{ textAlign: "right" }}>
           <h2 style={{ margin: 0 }}>{template.headerText || "FACTURA"}</h2>
           <p style={{ margin: "6px 0" }}>
-            <strong>Nº:</strong> {data.numero || data.id}
+            <strong>Nº:</strong>
+            {pickDisplayNumber(data)}
           </p>
           <p style={{ margin: 0 }}>
             <strong>Fecha:</strong>{" "}
