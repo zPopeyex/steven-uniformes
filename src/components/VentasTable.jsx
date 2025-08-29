@@ -170,34 +170,38 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
                                   }}
                                 >
                                   Total: $
-                                  {parseInt(v.precio * v.cantidad).toLocaleString(
-                                    "es-CO"
-                                  )}
+                                  {parseInt(
+                                    v.precio * v.cantidad
+                                  ).toLocaleString("es-CO")}
                                 </div>
                                 <div>
                                   <b>Estado:</b>{" "}
                                   <span
-                                    style={{ color: "#1976d2", fontWeight: 600 }}
+                                    style={{
+                                      color: "#1976d2",
+                                      fontWeight: 600,
+                                    }}
                                   >
                                     {v.estado || "venta"}
                                   </span>
-                                  {v.estado === "separado" && role === "Admin" && (
-                                    <button
-                                      onClick={() => marcarComoPagado(v.id)}
-                                      style={{
-                                        marginLeft: "10px",
-                                        padding: "3px 8px",
-                                        backgroundColor: "#4CAF50",
-                                        color: "white",
-                                        border: "none",
-                                        borderRadius: "4px",
-                                        cursor: "pointer",
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      Marcar como pagado
-                                    </button>
-                                  )}
+                                  {v.estado === "separado" &&
+                                    role === "Admin" && (
+                                      <button
+                                        onClick={() => marcarComoPagado(v.id)}
+                                        style={{
+                                          marginLeft: "10px",
+                                          padding: "3px 8px",
+                                          backgroundColor: "#4CAF50",
+                                          color: "white",
+                                          border: "none",
+                                          borderRadius: "4px",
+                                          cursor: "pointer",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        Marcar como pagado
+                                      </button>
+                                    )}
                                 </div>
                                 {v.estado === "separado" && (
                                   <>
