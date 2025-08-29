@@ -127,6 +127,18 @@ export default function ClientesPedidos() {
     // 5) Mostrar modal con factura
     setShowInvoicePreview({ tipo: "ventas", data: dataFactura });
   }
+  // 🔹 Firestore Timestamp / ISO / ms -> Date
+  const parseFsDate = (v) => {
+    if (!v) return null;
+    if (typeof v.toDate === "function") return v.toDate();
+    if (v.seconds) return new Date(v.seconds * 1000);
+    return new Date(v);
+  };
+  // Timestamp / ISO / ms -> ISO string
+  const asISO = (v) => {
+    const d = parseFsDate(v);
+    return d ? d.toISOString() : new Date().toISOString();
+  };
 
   const toDate = (ts) =>
     ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts);
@@ -1692,7 +1704,8 @@ export default function ClientesPedidos() {
                                         <span>
                                           <strong>
                                             #
-                                            {encargo.numeroCorto ||
+                                            {encargo.codigoCorto ||
+                                              encargo.numeroCorto ||
                                               encargo.numero ||
                                               encargo.id}
                                           </strong>
@@ -1719,9 +1732,11 @@ export default function ClientesPedidos() {
                                       >
                                         <div>
                                           Fecha:{" "}
-                                          {new Date(
-                                            encargo.createdAt
-                                          ).toLocaleDateString()}
+                                          {(
+                                            parseFsDate(encargo.createdAt) ||
+                                            parseFsDate(encargo.fecha) ||
+                                            new Date()
+                                          ).toLocaleDateString("es-CO")}
                                         </div>
                                         <div>
                                           Total: $
@@ -1742,12 +1757,74 @@ export default function ClientesPedidos() {
                                       <button
                                         className="btn btn-sm btn-primary"
                                         style={{ marginTop: 8 }}
-                                        onClick={() =>
+                                        onClick={() => {
+                                          // normaliza líneas (soporta 'items' nuevo o 'productos' antiguo)
+                                          const src =
+                                            Array.isArray(encargo.items) &&
+                                            encargo.items.length
+                                              ? encargo.items
+                                              : encargo.productos || [];
+
+                                          const items = src.map((i) => {
+                                            const cantidad = Number(
+                                              i.cantidad ?? 0
+                                            );
+                                            const unit = Number(
+                                              i.vrUnitario ?? i.precio ?? 0
+                                            );
+                                            return {
+                                              producto:
+                                                i.producto ?? i.prenda ?? "",
+                                              plantel:
+                                                i.plantel ?? i.colegio ?? "",
+                                              talla: i.talla ?? "",
+                                              cantidad,
+                                              vrUnitario: unit,
+                                              vrTotal: Number(
+                                                i.vrTotal ??
+                                                  i.total ??
+                                                  cantidad * unit
+                                              ),
+                                            };
+                                          });
+
+                                          const total =
+                                            Number(encargo.total) ||
+                                            items.reduce(
+                                              (s, it) =>
+                                                s + (Number(it.vrTotal) || 0),
+                                              0
+                                            );
+                                          const abono = Number(
+                                            encargo.abono || 0
+                                          );
+                                          const saldo =
+                                            encargo.saldo ??
+                                            Math.max(total - abono, 0);
+
                                           setShowInvoicePreview({
                                             tipo: "encargos",
-                                            data: { ...encargo, cliente },
-                                          })
-                                        }
+                                            data: {
+                                              ...encargo,
+                                              // 👇 aquí forzamos el número corto en el encabezado del PDF/modal
+                                              numero:
+                                                encargo.codigoCorto ||
+                                                encargo.numeroCorto ||
+                                                encargo.numeroFactura ||
+                                                encargo.numero ||
+                                                encargo.id,
+                                              createdAt: asISO(
+                                                encargo.createdAt ||
+                                                  encargo.fecha
+                                              ),
+
+                                              items,
+                                              total,
+                                              abono,
+                                              saldo,
+                                            },
+                                          });
+                                        }}
                                       >
                                         <FaEye /> Ver Detalle
                                       </button>
