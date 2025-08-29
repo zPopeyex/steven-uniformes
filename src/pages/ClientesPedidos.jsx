@@ -31,11 +31,15 @@ import {
   orderBy,
   setDoc,
   runTransaction,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import "../styles/client-table.css";
 import "../styles/sistema-completo.css";
 import ClientModal from "../components/clients/ClientModal";
 import InvoicePreview from "../components/invoices/InvoicePreview";
+import { limit } from "firebase/firestore";
+import FacturaDetalle from "../components/FacturaDetalle";
 
 const FaTemplate = FaFileInvoice;
 
@@ -55,7 +59,9 @@ export default function ClientesPedidos() {
 
   // Datos
   const [clientes, setClientes] = useState([]);
+  const [ventas, setVentas] = useState([]);
   const [pedidos, setPedidos] = useState([]);
+  const [encargos, setEncargos] = useState([]);
   const [plantillas, setPlantillas] = useState({
     ventas: null,
     encargos: null,
@@ -68,6 +74,62 @@ export default function ClientesPedidos() {
     entregado: "📦",
     pagado: "✅",
   };
+
+  async function abrirDetalleVenta(ventaResumen, cliente) {
+    // 1) Traer TODAS las líneas de esa venta.
+    //    Primero intentamos por numeroCorto (nuevo); si no hay, usamos numeroFactura (viejo).
+    let lineas = [];
+    if (ventaResumen?.numeroCorto) {
+      const q = query(
+        collection(db, "ventas"),
+        where("numeroCorto", "==", ventaResumen.numeroCorto)
+      );
+      const qs = await getDocs(q);
+      lineas = qs.docs.map((d) => d.data());
+    }
+    if (!lineas.length && ventaResumen?.numeroFactura) {
+      const q2 = query(
+        collection(db, "ventas"),
+        where("numeroFactura", "==", ventaResumen.numeroFactura)
+      );
+      const qs2 = await getDocs(q2);
+      lineas = qs2.docs.map((d) => d.data());
+    }
+
+    // 2) Normalizar ítems al formato de InvoicePreview
+    const items = normalizeVentaItems(lineas);
+
+    // 3) Totales
+    const total = items.reduce((s, it) => s + (Number(it.vrTotal) || 0), 0);
+    const abono = Number(ventaResumen.abono || 0);
+    const saldo = Number(ventaResumen.saldo ?? total - abono);
+
+    // 4) Armar el "data" que espera InvoicePreview
+    const dataFactura = {
+      numero: ventaResumen.numeroCorto ?? ventaResumen.numeroFactura ?? "",
+      createdAt:
+        ventaResumen.createdAt ||
+        lineas[0]?.fechaHora ||
+        new Date().toISOString(),
+      cliente: ventaResumen.clienteResumen || {
+        nombre: cliente?.nombre || ventaResumen.clienteNombre || "",
+        telefono: cliente?.telefono || ventaResumen.clienteTelefono || "",
+        documento: cliente?.documento || ventaResumen.clienteDocumento || "",
+        direccion: cliente?.direccion || ventaResumen.clienteDireccion || "",
+      },
+      items,
+      total,
+      abono,
+      saldo,
+      observaciones: ventaResumen.observaciones || "",
+    };
+
+    // 5) Mostrar modal con factura
+    setShowInvoicePreview({ tipo: "ventas", data: dataFactura });
+  }
+
+  const toDate = (ts) =>
+    ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts);
 
   const labelEstado = (estado) => `${ESTADO_EMOJI[estado] ?? "📄"} ${estado}`;
 
@@ -99,6 +161,50 @@ export default function ClientesPedidos() {
       return n;
     });
     return String(next).padStart(4, "0");
+  };
+
+  // Agrupa docs de "ventas" (cada doc = 1 ítem) por número de factura
+  const agruparVentasPorNumero = (ventasDeCliente = []) => {
+    const byNum = new Map();
+
+    ventasDeCliente.forEach((v) => {
+      const numero = v.numeroCorto || v.numeroFactura || v.numero || v.id;
+
+      const base = byNum.get(numero) || {
+        numero,
+        createdAt:
+          v.fechaHora ||
+          v.createdAt ||
+          v._createdAt ||
+          new Date().toISOString(),
+        clienteId: v.clienteId || null,
+        clienteResumen: v.clienteResumen || null,
+        estado: v.estado || null,
+        total: 0,
+        items: [],
+      };
+
+      // cada doc de ventas equivale a un item del comprobante
+      const cantidad = Number(v.cantidad) || 0;
+      const vrUnit = Number(v.precio) || Number(v.vrUnitario) || 0;
+
+      base.items.push({
+        producto: v.prenda || v.producto || "",
+        plantel: v.colegio || v.plantel || "",
+        talla: v.talla || "",
+        cantidad,
+        vrUnitario: vrUnit,
+        vrTotal: vrUnit * cantidad,
+      });
+
+      base.total += vrUnit * cantidad;
+      byNum.set(numero, base);
+    });
+
+    // orden descendente por fecha
+    return Array.from(byNum.values()).sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
   };
 
   // ===== Helper: precio por Plantel + Producto + Talla =====
@@ -215,7 +321,7 @@ export default function ClientesPedidos() {
   useEffect(() => {
     const qClientes = query(
       collection(db, "clientes"),
-      orderBy("fechaCreacion", "asc")
+      orderBy("fechaCreacion", "desc")
     );
     const unsubClientes = onSnapshot(qClientes, (snap) => {
       setClientes(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -227,6 +333,23 @@ export default function ClientesPedidos() {
     );
     const unsubPedidos = onSnapshot(qPedidos, (snap) => {
       setPedidos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    // AGREGAR ESTA NUEVA SUSCRIPCIÓN PARA VENTAS
+    const qVentas = query(
+      collection(db, "ventas"),
+      orderBy("fechaHora", "desc")
+    );
+    const unsubVentas = onSnapshot(qVentas, (snap) => {
+      setVentas(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    // ⬇️ NUEVO: encargos
+    const qEncargos = query(
+      collection(db, "encargos"),
+      orderBy("createdAt", "desc")
+    );
+    const unsubEncargos = onSnapshot(qEncargos, (snap) => {
+      setEncargos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
     const unsubTemplates = [
@@ -253,9 +376,31 @@ export default function ClientesPedidos() {
     return () => {
       unsubClientes();
       unsubPedidos();
+      unsubVentas(); // AGREGAR ESTA LÍNEA
+      unsubEncargos(); // ⬅️ NUEVO
       unsubTemplates.forEach((u) => u());
     };
   }, []);
+
+  // Convierte cualquier doc de venta (con prenda/precio, etc.) al formato que usa InvoicePreview
+  function normalizeVentaItems(rawItemsOrDocs) {
+    const list = Array.isArray(rawItemsOrDocs) ? rawItemsOrDocs : [];
+
+    return list.map((i) => {
+      const cantidad = Number(i.cantidad ?? i.qty ?? i.unidades ?? 0);
+      const precioUnit = Number(i.precioUnit ?? i.precio ?? i.vrUnitario ?? 0);
+
+      return {
+        // claves que espera InvoicePreview
+        producto: i.producto ?? i.prenda ?? i.descripcion ?? "",
+        plantel: i.colegio ?? i.plantel ?? "",
+        talla: i.talla ?? i.tam ?? "",
+        cantidad,
+        vrUnitario: precioUnit,
+        vrTotal: Number(i.totalFila ?? i.vrTotal ?? cantidad * precioUnit),
+      };
+    });
+  }
 
   // Cargar catálogo
   useEffect(() => {
@@ -522,6 +667,106 @@ export default function ClientesPedidos() {
     requestAnimationFrame(() => {
       const el = document.querySelector(".card .card-title"); // título "Nuevo Pedido"
       el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  // Normaliza líneas de venta al formato que espera InvoicePreview
+  const normalizarLineasVenta = (raw = []) =>
+    (Array.isArray(raw) ? raw : []).map((i) => {
+      const cantidad = Number(i.cantidad ?? i.qty ?? 0);
+      const unit = Number(i.precioUnit ?? i.precio ?? i.vrUnitario ?? 0);
+      return {
+        producto: i.producto ?? i.prenda ?? i.descripcion ?? "",
+        plantel: i.colegio ?? i.plantel ?? "",
+        talla: i.talla ?? "",
+        cantidad,
+        vrUnitario: unit,
+        vrTotal: Number(i.vrTotal ?? i.totalFila ?? cantidad * unit),
+      };
+    });
+
+  // ⬅️ Este reemplaza tu inline setShowInvoicePreview para VENTAS
+  const verDetalleVenta = async (venta, cliente) => {
+    // 1) intentar por numeroCorto (nuevo), si no existe usar numeroFactura (viejo)
+    let snap = null;
+
+    if (venta?.numeroCorto) {
+      const q1 = query(
+        collection(db, "ventas"),
+        where("numeroCorto", "==", venta.numeroCorto)
+      );
+      snap = await getDocs(q1);
+    }
+    if (!snap || snap.empty) {
+      const q2 = query(
+        collection(db, "ventas"),
+        where("numeroFactura", "==", venta.numeroFactura || "")
+      );
+      snap = await getDocs(q2);
+    }
+
+    // 2) Si hay docs “línea por producto”, úsalos; si no, intenta items embebidos
+    const lineas = snap?.empty ? [] : snap.docs.map((d) => d.data());
+    const items = lineas.length
+      ? normalizarLineasVenta(lineas)
+      : normalizarLineasVenta(venta?.items || []);
+
+    // 3) Totales
+    const total = items.reduce((s, it) => s + (Number(it.vrTotal) || 0), 0);
+    const abono = Number(venta?.abono || 0);
+    const saldo = Number(venta?.saldo ?? total - abono);
+
+    // 4) Armar data para el componente de factura
+    setShowInvoicePreview({
+      tipo: "ventas",
+      data: {
+        ...venta,
+        numero: venta?.numeroCorto || venta?.numeroFactura || venta?.id || "",
+        createdAt:
+          venta?.createdAt || lineas[0]?.fechaHora || new Date().toISOString(),
+        cliente: venta?.clienteResumen || cliente || {},
+        items,
+        total,
+        abono,
+        saldo,
+      },
+    });
+  };
+
+  const normalizarLineasPedido = (raw = []) =>
+    (Array.isArray(raw) ? raw : []).map((i) => {
+      const cantidad = Number(i.cantidad ?? 0);
+      const unit = Number(i.vrUnitario ?? i.precioUnit ?? 0);
+      return {
+        producto: i.producto ?? i.prenda ?? i.descripcion ?? "",
+        plantel: i.plantel ?? i.colegio ?? "",
+        talla: i.talla ?? "",
+        cantidad,
+        vrUnitario: unit,
+        vrTotal: Number(i.vrTotal ?? i.totalFila ?? cantidad * unit),
+      };
+    });
+
+  const verDetallePedido = (pedido, cliente) => {
+    const items = normalizarLineasPedido(pedido?.items || []);
+    const total = Number(
+      pedido?.total ?? items.reduce((s, it) => s + (Number(it.vrTotal) || 0), 0)
+    );
+    const abono = Number(pedido?.abono || 0);
+    const saldo = Number(pedido?.saldo ?? total - abono);
+
+    setShowInvoicePreview({
+      tipo: "pedidos",
+      data: {
+        ...pedido,
+        numero: pedido?.numero || pedido?.id || "",
+        createdAt: pedido?.createdAt || new Date().toISOString(),
+        cliente: cliente || pedido?.cliente || {},
+        items,
+        total,
+        abono,
+        saldo,
+      },
     });
   };
 
@@ -1219,12 +1464,9 @@ export default function ClientesPedidos() {
                                       <button
                                         className="btn btn-sm btn-primary"
                                         style={{ marginTop: 8 }}
-                                        onClick={() => {
-                                          setShowInvoicePreview({
-                                            tipo: "pedidos",
-                                            data: { ...pedido, cliente },
-                                          });
-                                        }}
+                                        onClick={() =>
+                                          verDetallePedido(pedido, cliente)
+                                        }
                                       >
                                         <FaEye /> Ver Detalle
                                       </button>
@@ -1241,18 +1483,284 @@ export default function ClientesPedidos() {
 
                               <div className="card" style={{ padding: 16 }}>
                                 <h5 style={{ marginBottom: 12 }}>💰 Ventas</h5>
-                                <p style={{ color: "#9ca3af", fontSize: 14 }}>
-                                  Sin ventas registradas
-                                </p>
+
+                                {(() => {
+                                  const ventasDeCliente = ventas.filter(
+                                    (v) => v.clienteId === cliente.id
+                                  );
+                                  const ventasAgrupadas =
+                                    agruparVentasPorNumero(ventasDeCliente);
+
+                                  if (ventasAgrupadas.length === 0) {
+                                    return (
+                                      <p
+                                        style={{
+                                          color: "#9ca3af",
+                                          fontSize: 14,
+                                        }}
+                                      >
+                                        Sin ventas registradas
+                                      </p>
+                                    );
+                                  }
+
+                                  return ventasAgrupadas.map((venta) => (
+                                    <div
+                                      key={venta.numero}
+                                      style={{
+                                        padding: 8,
+                                        marginBottom: 8,
+                                        background: "#fff",
+                                        borderRadius: 8,
+                                        border: "1px solid var(--border)",
+                                        fontWeight: 600,
+                                        color: "var(--primary)",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                        }}
+                                      >
+                                        <span>
+                                          <strong>#{venta.numero}</strong>
+                                        </span>
+                                        {venta.estado && (
+                                          <span
+                                            className={`badge ${
+                                              venta.estado === "pagado"
+                                                ? "badge-success"
+                                                : venta.estado === "pendiente"
+                                                ? "badge-danger"
+                                                : "badge-warning"
+                                            }`}
+                                          >
+                                            {venta.estado}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div
+                                        style={{
+                                          fontSize: 14,
+                                          color: "#6b7280",
+                                          marginTop: 4,
+                                        }}
+                                      >
+                                        <div>
+                                          Fecha:{" "}
+                                          {toDate(
+                                            venta.createdAt
+                                          ).toLocaleDateString("es-CO")}
+                                        </div>
+                                        <div>
+                                          Total: $
+                                          {Number(
+                                            venta.total || 0
+                                          ).toLocaleString("es-CO")}
+                                        </div>
+                                      </div>
+
+                                      <button
+                                        className="btn btn-sm btn-primary"
+                                        style={{ marginTop: 8 }}
+                                        onClick={() => {
+                                          // <-- función local SIN hooks: arma los items con los nombres esperados por InvoicePreview
+                                          const mapVentaItems = (v) => {
+                                            // Soporta varias formas: v.items (nuevo), v.detalle / v.lineas (si existieron),
+                                            // o un doc antiguo de 1 ítem (usamos el propio v como item).
+                                            const src =
+                                              Array.isArray(v.items) &&
+                                              v.items.length
+                                                ? v.items
+                                                : Array.isArray(v.detalle) &&
+                                                  v.detalle.length
+                                                ? v.detalle
+                                                : Array.isArray(v.lineas) &&
+                                                  v.lineas.length
+                                                ? v.lineas
+                                                : [v]; // fallback: documento antiguo de 1 producto
+
+                                            return src.map((it) => {
+                                              const cantidad =
+                                                Number(
+                                                  it.cantidad ?? v.cantidad ?? 0
+                                                ) || 0;
+                                              const unit =
+                                                Number(
+                                                  it.vrUnitario ??
+                                                    it.precioUnit ??
+                                                    it.precio ??
+                                                    v.precio ??
+                                                    0
+                                                ) || 0;
+                                              return {
+                                                producto:
+                                                  it.producto ??
+                                                  it.prenda ??
+                                                  it.descripcion ??
+                                                  "",
+                                                plantel:
+                                                  it.plantel ??
+                                                  it.colegio ??
+                                                  "",
+                                                talla: it.talla ?? "",
+                                                cantidad,
+                                                vrUnitario: unit,
+                                                vrTotal:
+                                                  Number(
+                                                    it.vrTotal ??
+                                                      it.totalFila ??
+                                                      0
+                                                  ) || cantidad * unit,
+                                              };
+                                            });
+                                          };
+
+                                          const items = mapVentaItems(venta);
+
+                                          setShowInvoicePreview({
+                                            tipo: "ventas",
+                                            data: {
+                                              ...venta,
+                                              // aseguramos numero corto si existe
+                                              numero:
+                                                venta.numeroCorto ||
+                                                venta.numero ||
+                                                venta.id,
+                                              items,
+                                              // normaliza totales por si el doc no los trae
+                                              total:
+                                                Number(venta.total ?? 0) ||
+                                                items.reduce(
+                                                  (s, it) =>
+                                                    s +
+                                                    (Number(it.vrTotal) || 0),
+                                                  0
+                                                ),
+                                              abono:
+                                                Number(venta.abono ?? 0) || 0,
+                                              saldo:
+                                                Number(venta.saldo ?? 0) ||
+                                                (Number(venta.total ?? 0) ||
+                                                  items.reduce(
+                                                    (s, it) =>
+                                                      s +
+                                                      (Number(it.vrTotal) || 0),
+                                                    0
+                                                  )) -
+                                                  (Number(venta.abono ?? 0) ||
+                                                    0),
+                                            },
+                                          });
+                                        }}
+                                      >
+                                        <FaEye /> Ver Detalle
+                                      </button>
+                                    </div>
+                                  ));
+                                })()}
                               </div>
 
                               <div className="card" style={{ padding: 16 }}>
                                 <h5 style={{ marginBottom: 12 }}>
                                   📋 Encargos
                                 </h5>
-                                <p style={{ color: "#9ca3af", fontSize: 14 }}>
-                                  Sin encargos registrados
-                                </p>
+
+                                {encargos
+                                  .filter((e) => e.clienteId === cliente.id)
+                                  .map((encargo) => (
+                                    <div
+                                      key={encargo.id}
+                                      style={{
+                                        padding: 8,
+                                        marginBottom: 8,
+                                        background: "#fff",
+                                        borderRadius: 8,
+                                        border: "1px solid var(--border)",
+                                        fontWeight: 600,
+                                        color: "var(--primary)",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                        }}
+                                      >
+                                        <span>
+                                          <strong>
+                                            #
+                                            {encargo.numeroCorto ||
+                                              encargo.numero ||
+                                              encargo.id}
+                                          </strong>
+                                        </span>
+                                        <span
+                                          className={`badge ${
+                                            encargo.estado === "pagado"
+                                              ? "badge-success"
+                                              : encargo.estado === "entregado"
+                                              ? "badge-warning"
+                                              : "badge-danger"
+                                          }`}
+                                        >
+                                          {encargo.estado || "pendiente"}
+                                        </span>
+                                      </div>
+
+                                      <div
+                                        style={{
+                                          fontSize: 14,
+                                          color: "#6b7280",
+                                          marginTop: 4,
+                                        }}
+                                      >
+                                        <div>
+                                          Fecha:{" "}
+                                          {new Date(
+                                            encargo.createdAt
+                                          ).toLocaleDateString()}
+                                        </div>
+                                        <div>
+                                          Total: $
+                                          {Number(
+                                            encargo.total || 0
+                                          ).toLocaleString()}{" "}
+                                          · Abono: $
+                                          {Number(
+                                            encargo.abono || 0
+                                          ).toLocaleString()}{" "}
+                                          · Saldo: $
+                                          {Number(
+                                            encargo.saldo || 0
+                                          ).toLocaleString()}
+                                        </div>
+                                      </div>
+
+                                      <button
+                                        className="btn btn-sm btn-primary"
+                                        style={{ marginTop: 8 }}
+                                        onClick={() =>
+                                          setShowInvoicePreview({
+                                            tipo: "encargos",
+                                            data: { ...encargo, cliente },
+                                          })
+                                        }
+                                      >
+                                        <FaEye /> Ver Detalle
+                                      </button>
+                                    </div>
+                                  ))}
+
+                                {encargos.filter(
+                                  (e) => e.clienteId === cliente.id
+                                ).length === 0 && (
+                                  <p style={{ color: "#9ca3af", fontSize: 14 }}>
+                                    Sin encargos registrados
+                                  </p>
+                                )}
                               </div>
                             </div>
 
