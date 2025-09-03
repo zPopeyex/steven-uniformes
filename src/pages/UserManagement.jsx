@@ -1,24 +1,35 @@
 import React, { useEffect, useState } from "react";
-import {
-  collection,
-  doc,
-  onSnapshot,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
+import { collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLoading } from "../context/LoadingContext.jsx";
 import Spinner from "../components/Spinner.jsx";
+import ModalBase from "../components/ModalBase.jsx";
 
-const OPTION_LIST = [
+const PERM_OPTIONS = [
   { key: "inventario", label: "Inventario" },
+  { key: "ventas", label: "Ventas/Encargos" },
+  { key: "clientes_pedidos", label: "Clientes & Pedidos" },
   { key: "stock", label: "Stock" },
-  { key: "ventas", label: "Ventas" },
   { key: "catalogo", label: "Catálogo" },
+  { key: "proveedores", label: "Proveedores" },
+  { key: "gastos", label: "Gastos" },
+  { key: "modistas", label: "Gestión modistas" },
+  { key: "reportes_modistas", label: "Reportes modistas" },
   { key: "usuarios", label: "Usuarios" },
 ];
+
+const ALL_KEYS = PERM_OPTIONS.map((o) => o.key);
+const emptyPermisos = () => ALL_KEYS.reduce((acc, k) => ((acc[k] = false), acc), {});
+const arrayToPermisos = (arr = []) => {
+  const p = emptyPermisos();
+  (arr || []).forEach((k) => {
+    const key = k === "reportes" ? "reportes_modistas" : k;
+    if (key in p) p[key] = true;
+  });
+  return p;
+};
+const permisosToArray = (obj = {}) => ALL_KEYS.filter((k) => !!obj[k]);
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -26,24 +37,21 @@ const UserManagement = () => {
     name: "",
     email: "",
     role: "Usuario",
-    permissions: [],
+    permisos: emptyPermisos(),
   });
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const { permissions } = useAuth();
+  const { permisos, role } = useAuth();
   const { showLoading, hideLoading } = useLoading();
 
   useEffect(() => {
     setLoading(true);
     const q = collection(db, "users");
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usuarios = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        active: d.data().active !== false,
-      }));
+      const usuarios = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), active: d.data().active !== false }));
       setUsers(usuarios);
       setLoading(false);
     });
@@ -53,31 +61,36 @@ const UserManagement = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!newUser.name.trim()) return;
+    setIsSaving(true);
     showLoading();
-    const ref = doc(collection(db, "users"));
-    await setDoc(ref, {
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      permissions: newUser.permissions,
-      active: true,
-    });
-    hideLoading();
-    setNewUser({ name: "", email: "", role: "Usuario", permissions: [] });
-    setShowModal(false);
+    try {
+      const ref = doc(collection(db, "users"));
+      const permisosObj = newUser.role === "Admin" ? ALL_KEYS.reduce((a, k) => ((a[k] = true), a), {}) : newUser.permisos;
+      const permissionsArr = permisosToArray(permisosObj);
+      await setDoc(ref, { name: newUser.name, email: newUser.email, role: newUser.role, permisos: permisosObj, permissions: permissionsArr, active: true });
+      setNewUser({ name: "", email: "", role: "Usuario", permisos: emptyPermisos() });
+      setShowModal(false);
+    } finally {
+      hideLoading();
+      setIsSaving(false);
+    }
   };
 
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     if (!editingUser) return;
+    setIsSaving(true);
     showLoading();
-    await updateDoc(doc(db, "users", editingUser.id), {
-      role: editingUser.role,
-      permissions: editingUser.permissions,
-    });
-    hideLoading();
-    setEditingUser(null);
-    setShowModal(false);
+    try {
+      const permisosObj = editingUser.role === "Admin" ? ALL_KEYS.reduce((a, k) => ((a[k] = true), a), {}) : (editingUser.permisos || emptyPermisos());
+      const permissionsArr = permisosToArray(permisosObj);
+      await updateDoc(doc(db, "users", editingUser.id), { role: editingUser.role, permisos: permisosObj, permissions: permissionsArr });
+      setEditingUser(null);
+      setShowModal(false);
+    } finally {
+      hideLoading();
+      setIsSaving(false);
+    }
   };
 
   const handleToggleActive = async (id, current) => {
@@ -98,49 +111,29 @@ const UserManagement = () => {
       name: user.name || "",
       email: user.email || "",
       role: user.role || "Usuario",
-      permissions: user.permissions || [],
+      permisos: user.permisos ? { ...emptyPermisos(), ...user.permisos } : arrayToPermisos(user.permissions || []),
     });
     setShowModal(true);
   };
 
-  const toggleNewUserPermission = (option) => {
-    setNewUser((prev) => {
-      const perms = prev.permissions.includes(option)
-        ? prev.permissions.filter((p) => p !== option)
-        : [...prev.permissions, option];
-      return { ...prev, permissions: perms };
-    });
-  };
-
-  const toggleEditPermission = (option) => {
-    setEditingUser((prev) => {
-      const perms = prev.permissions.includes(option)
-        ? prev.permissions.filter((p) => p !== option)
-        : [...prev.permissions, option];
-      return { ...prev, permissions: perms };
-    });
-  };
+  const toggleNewUserPermission = (key) => setNewUser((prev) => ({ ...prev, permisos: { ...prev.permisos, [key]: !prev.permisos[key] } }));
+  const toggleEditPermission = (key) => setEditingUser((prev) => ({ ...prev, permisos: { ...prev.permisos, [key]: !prev.permisos[key] } }));
 
   const closeModal = () => {
     setShowModal(false);
     setEditingUser(null);
   };
 
-  if (!permissions.includes("usuarios")) {
+  const isAdmin = String(role || "").toLowerCase() === "admin";
+  if (!(isAdmin || permisos?.usuarios)) {
     return <div style={{ padding: 20 }}>Acceso restringido</div>;
   }
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>👥 Gestión de Usuarios</h2>
-      <button
-        onClick={() => {
-          setShowModal(true);
-          setEditingUser(null);
-        }}
-        style={{ marginBottom: 20 }}
-      >
-        ➕ Crear Usuario
+      <h2>Gestión de Usuarios</h2>
+      <button onClick={() => { setShowModal(true); setEditingUser(null); }} style={{ marginBottom: 20 }}>
+        + Crear Usuario
       </button>
 
       {loading ? (
@@ -149,87 +142,41 @@ const UserManagement = () => {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-                Nombre
-              </th>
-              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-                Correo
-              </th>
-              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-                Rol
-              </th>
-              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-                Permisos
-              </th>
-              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-                Estado
-              </th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>Nombre</th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>Correo</th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>Rol</th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>Permisos</th>
+              <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>Estado</th>
               <th style={{ borderBottom: "1px solid #ccc" }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => {
-              const displayName =
-                user.name || user.nickname || user.email || "Sin nombre";
-              const displayEmail = user.email || "Sin correo";
-              const roleClass = `badge badge--fixed ${(user.role || "usuario")
-                .toLowerCase()
-                .replace(/\s+/g, "-")
-                .replace("ñ", "n")}`;
+            {users.map((u) => {
+              const displayName = u.name || u.nickname || u.email || "Sin nombre";
+              const displayEmail = u.email || "Sin correo";
+              const permsObj = u.permisos || arrayToPermisos(u.permissions || []);
+              const chips = ALL_KEYS.filter((k) => permsObj[k]);
               return (
-                <tr key={user.id}>
+                <tr key={u.id}>
                   <td style={{ padding: "8px 0" }}>{displayName}</td>
                   <td style={{ padding: "8px 0" }}>{displayEmail}</td>
+                  <td>{u.role || "Usuario"}</td>
                   <td>
-                    <span className={roleClass}>{user.role}</span>
-                  </td>
-                  <td>
-                    {(user.permissions || []).map((perm) => (
-                      <span key={perm} className="chip">
-                        {OPTION_LIST.find((o) => o.key === perm)?.label || perm}
+                    {chips.map((key) => (
+                      <span key={key} className="chip">
+                        {PERM_OPTIONS.find((o) => o.key === key)?.label || key}
                       </span>
                     ))}
                   </td>
                   <td>
                     <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={user.active}
-                        onChange={() =>
-                          handleToggleActive(user.id, user.active)
-                        }
-                      />
+                      <input type="checkbox" checked={u.active !== false} onChange={() => handleToggleActive(u.id, u.active !== false)} />
                       <span className="slider"></span>
                     </label>
                   </td>
                   <td>
-                    <button
-                      onClick={() => openEditUser(user)}
-                      style={{
-                        marginRight: 8,
-                        color: "white",
-                        backgroundColor: "#3b82f6",
-                        padding: "5px 10px",
-                        border: "none",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(user.id)}
-                      style={{
-                        color: "white",
-                        backgroundColor: "red",
-                        padding: "5px 10px",
-                        border: "none",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Eliminar
-                    </button>
+                    <button onClick={() => openEditUser(u)} style={{ marginRight: 8, color: "white", backgroundColor: "#3b82f6", padding: "5px 10px", border: "none", borderRadius: 4, cursor: "pointer" }}>Editar</button>
+                    <button onClick={() => handleDelete(u.id)} style={{ color: "white", backgroundColor: "red", padding: "5px 10px", border: "none", borderRadius: 4, cursor: "pointer" }}>Eliminar</button>
                   </td>
                 </tr>
               );
@@ -238,84 +185,77 @@ const UserManagement = () => {
         </table>
       )}
 
-      {(showModal || editingUser) && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>
-              {editingUser ? "Editar Usuario" : "Crear Usuario"}
-            </h3>
-            <form onSubmit={editingUser ? handleUpdateUser : handleCreateUser}>
-              {editingUser ? (
-                <>
-                  <p>
-                    <strong>{editingUser.name}</strong>
-                  </p>
-                  <p style={{ fontSize: "0.9rem", color: "#555" }}>
-                    {editingUser.email}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={newUser.name}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, name: e.target.value })
-                    }
-                    placeholder="Nombre"
-                    style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
-                  />
-                  <input
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, email: e.target.value })
-                    }
-                    placeholder="Correo"
-                    style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
-                  />
-                </>
-              )}
-              <select
-                value={editingUser ? editingUser.role : newUser.role}
-                onChange={(e) =>
-                  editingUser
-                    ? setEditingUser({ ...editingUser, role: e.target.value })
-                    : setNewUser({ ...newUser, role: e.target.value })
-                }
-                style={{ marginRight: 10, padding: 5, marginBottom: 10 }}
-              >
-                <option value="Usuario">Usuario</option>
-                <option value="Admin">Admin</option>
-              </select>
-              <div style={{ margin: "10px 0" }}>
-                {OPTION_LIST.map((opt) => (
-                  <label key={opt.key} style={{ marginRight: 10 }}>
-                    <input
-                      type="checkbox"
-                      checked={(editingUser
-                        ? editingUser.permissions
-                        : newUser.permissions
-                      ).includes(opt.key)}
-                      onChange={() =>
-                        editingUser
-                          ? toggleEditPermission(opt.key)
-                          : toggleNewUserPermission(opt.key)
-                      }
-                    />
-                    {opt.label}
-                  </label>
-                ))}
+      <ModalBase
+        isOpen={!!(showModal || editingUser)}
+        title={editingUser ? "Editar Usuario" : "Crear Usuario"}
+        onClose={closeModal}
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={closeModal} disabled={isSaving}>Cancelar</button>
+            <button className="btn btn-primary" type="submit" form="user-form" disabled={isSaving}>
+              {isSaving ? "Guardando..." : "Guardar"}
+            </button>
+          </>
+        }
+      >
+        <form id="user-form" onSubmit={editingUser ? handleUpdateUser : handleCreateUser}>
+          {editingUser ? (
+            <>
+              <div className="form-group">
+                <label className="form-label">Nombre</label>
+                <input className="form-input" type="text" value={editingUser.name} readOnly />
               </div>
-              <div style={{ textAlign: "right" }}>
-                <button type="submit">Guardar</button>
+              <div className="form-group">
+                <label className="form-label">Correo</label>
+                <input className="form-input" type="email" value={editingUser.email} readOnly />
               </div>
-            </form>
+            </>
+          ) : (
+            <>
+              <div className="form-group">
+                <label className="form-label">Nombre</label>
+                <input className="form-input" type="text" value={newUser.name} onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} placeholder="Nombre" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Correo</label>
+                <input className="form-input" type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} placeholder="Correo" required />
+              </div>
+            </>
+          )}
+
+          <div className="form-group">
+            <label className="form-label">Rol</label>
+            <select
+              className="form-select"
+              value={editingUser ? editingUser.role : newUser.role}
+              onChange={(e) => (editingUser ? setEditingUser({ ...editingUser, role: e.target.value }) : setNewUser({ ...newUser, role: e.target.value }))}
+            >
+              <option value="Usuario">Usuario</option>
+              <option value="Admin">Admin</option>
+            </select>
           </div>
-        </div>
-      )}
+
+          <div className="form-group">
+            <label className="form-label">Permisos</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {PERM_OPTIONS.map((opt) => (
+                <label key={opt.key} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    disabled={(editingUser ? editingUser.role : newUser.role) === "Admin"}
+                    checked={Boolean((editingUser ? editingUser.permisos : newUser.permisos)[opt.key])}
+                    onChange={() => (editingUser ? toggleEditPermission(opt.key) : toggleNewUserPermission(opt.key))}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </form>
+      </ModalBase>
     </div>
   );
 };
 
 export default UserManagement;
+
