@@ -81,6 +81,214 @@ const VentasEncargos = () => {
   }, []);
 
   // ====== VENTAS ======
+  // Helper: referencia al doc de stock por combinación (o null si no existe)
+  async function refToStockDoc(colegio, prenda, talla) {
+    const q = query(
+      collection(db, "stock_actual"),
+      where("colegio", "==", colegio),
+      where("prenda", "==", prenda),
+      where("talla", "==", talla)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) return snap.docs[0].ref;
+    return null;
+  }
+
+  // Nuevo flujo: registra Venta/Separado con transacción y validación de stock
+  const handleAgregarVentaTx = async (itemsCarrito) => {
+    try {
+      const items = Array.isArray(itemsCarrito) ? itemsCarrito : [itemsCarrito];
+
+      const invalidos = items.filter(
+        (it) =>
+          !it.colegio?.trim() ||
+          !it.prenda?.trim() ||
+          !it.talla?.trim() ||
+          isNaN(it.precio) ||
+          Number(it.precio) <= 0 ||
+          isNaN(it.cantidad) ||
+          Number(it.cantidad) <= 0
+      );
+      if (invalidos.length > 0) {
+        throw new Error(`${invalidos.length} producto(s) inválidos`);
+      }
+
+      const itemsConDescuento = items.filter(
+        (it) => it.estado === "venta" || it.estado === "separado"
+      );
+
+      const keyOf = (i) => `${i.colegio}||${i.prenda}||${i.talla}`;
+      const grupos = new Map();
+      for (const it of itemsConDescuento) {
+        const k = keyOf(it);
+        const prev = grupos.get(k) || {
+          colegio: it.colegio,
+          prenda: it.prenda,
+          talla: it.talla,
+          cantidad: 0,
+        };
+        prev.cantidad += Number(it.cantidad) || 0;
+        grupos.set(k, prev);
+      }
+
+      const refs = new Map();
+      await Promise.all(
+        Array.from(grupos.values()).map(async (g) => {
+          const ref = await refToStockDoc(g.colegio, g.prenda, g.talla);
+          refs.set(`${g.colegio}||${g.prenda}||${g.talla}`, ref);
+        })
+      );
+
+      const numeroFactura = `FAC-${Date.now()}`;
+      const fechaHora = serverTimestamp();
+
+      await runTransaction(db, async (tx) => {
+        const faltantes = [];
+        const disponibles = new Map();
+
+        for (const g of grupos.values()) {
+          const key = `${g.colegio}||${g.prenda}||${g.talla}`;
+          const ref = refs.get(key);
+          let disponible = 0;
+          if (ref) {
+            const snap = await tx.get(ref);
+            disponible = snap.exists() ? Number(snap.data().cantidad || 0) : 0;
+          } else {
+            disponible = 0;
+          }
+          disponibles.set(key, disponible);
+          if (disponible < g.cantidad) {
+            faltantes.push({ ...g, disponible });
+          }
+        }
+
+        if (faltantes.length > 0) {
+          const msg =
+            "Sin stock suficiente para:\n" +
+            faltantes
+              .map(
+                (f) =>
+                  `- ${f.prenda} ${f.talla} (${f.colegio}). Disp: ${f.disponible}, Sol: ${f.cantidad}`
+              )
+              .join("\n");
+          throw new Error(msg);
+        }
+
+        for (const g of grupos.values()) {
+          const key = `${g.colegio}||${g.prenda}||${g.talla}`;
+          const ref = refs.get(key);
+          if (!ref) {
+            throw new Error(
+              `Sin stock para ${g.prenda} ${g.talla} (${g.colegio}). Disp: 0, Sol: ${g.cantidad}`
+            );
+          }
+          const disponible = Number(disponibles.get(key) || 0);
+          tx.update(ref, { cantidad: disponible - Number(g.cantidad || 0) });
+        }
+
+        for (const it of items) {
+          if (!(it.estado === "venta" || it.estado === "separado")) continue;
+          const payload = {
+            ...it,
+            numeroFactura,
+            fechaHora,
+            abono: it.estado === "separado" ? Number(it.abono) || 0 : 0,
+            saldo: it.estado === "separado" ? Number(it.saldo) || 0 : 0,
+            cliente: it.cliente || "",
+            precio: Number(it.precio),
+            cantidad: Number(it.cantidad),
+          };
+          const ventaRef = doc(collection(db, "ventas"));
+          tx.set(ventaRef, payload);
+        }
+      });
+
+      cargarDatos();
+      // Mensaje de éxito según tipo
+      const cVenta = items.filter((i) => i.estado === "venta").length;
+      const cSep = items.filter((i) => i.estado === "separado").length;
+      if (cVenta && !cSep) {
+        alert(`${cVenta} venta(s) registrada(s) exitosamente.`);
+      } else if (cSep && !cVenta) {
+        alert(`${cSep} separado(s) registrado(s) exitosamente.`);
+      } else {
+        alert(
+          `Registro completado. Ventas: ${cVenta || 0}. Separados: ${cSep || 0}.`
+        );
+      }
+      return true;
+    } catch (e) {
+      console.error("Error al registrar venta:", e);
+      alert(`Error al registrar venta: ${e.message}`);
+      return false;
+    }
+  };
+
+  // Transaccional: actualizar stock con validación (cambio de estado a 'venta')
+  const actualizarStockTx = async (items) => {
+    const list = Array.isArray(items) ? items : [items];
+    const keyOf = (i) => `${i.colegio}||${i.prenda}||${i.talla}`;
+
+    const grupos = new Map();
+    for (const it of list) {
+      const k = keyOf(it);
+      const prev = grupos.get(k) || {
+        colegio: it.colegio,
+        prenda: it.prenda,
+        talla: it.talla,
+        cantidad: 0,
+      };
+      prev.cantidad += Number(it.cantidad) || 0;
+      grupos.set(k, prev);
+    }
+
+    const refs = new Map();
+    await Promise.all(
+      Array.from(grupos.values()).map(async (g) => {
+        const ref = await refToStockDoc(g.colegio, g.prenda, g.talla);
+        refs.set(`${g.colegio}||${g.prenda}||${g.talla}`, ref);
+      })
+    );
+
+    await runTransaction(db, async (tx) => {
+      const faltantes = [];
+      const disponibles = new Map();
+      for (const g of grupos.values()) {
+        const key = `${g.colegio}||${g.prenda}||${g.talla}`;
+        const ref = refs.get(key);
+        let disponible = 0;
+        if (ref) {
+          const snap = await tx.get(ref);
+          disponible = snap.exists() ? Number(snap.data().cantidad || 0) : 0;
+        } else {
+          disponible = 0;
+        }
+        disponibles.set(key, disponible);
+        if (disponible < g.cantidad) faltantes.push({ ...g, disponible });
+      }
+      if (faltantes.length > 0) {
+        const msg =
+          "Sin stock suficiente para:\n" +
+          faltantes
+            .map(
+              (f) =>
+                `- ${f.prenda} ${f.talla} (${f.colegio}). Disp: ${f.disponible}, Sol: ${f.cantidad}`
+            )
+            .join("\n");
+        throw new Error(msg);
+      }
+      for (const g of grupos.values()) {
+        const key = `${g.colegio}||${g.prenda}||${g.talla}`;
+        const ref = refs.get(key);
+        if (!ref)
+          throw new Error(
+            `Sin stock para ${g.prenda} ${g.talla} (${g.colegio}). Disp: 0, Sol: ${g.cantidad}`
+          );
+        const disponible = Number(disponibles.get(key) || 0);
+        tx.update(ref, { cantidad: disponible - Number(g.cantidad || 0) });
+      }
+    });
+  };
   const handleAgregarVenta = async (itemsCarrito) => {
     try {
       const items = Array.isArray(itemsCarrito) ? itemsCarrito : [itemsCarrito];
@@ -230,6 +438,7 @@ const VentasEncargos = () => {
       };
 
       await addDoc(collection(db, "encargos"), payload);
+      alert(`Encargo registrado exitosamente. Código: ${payload.codigoCorto}`);
       return true;
     } catch (e) {
       console.error("Error al registrar encargo:", e);
@@ -264,7 +473,16 @@ const VentasEncargos = () => {
 
       if (nuevoEstado === "venta" && coleccion === "ventas") {
         const ventaDoc = await getDoc(docRef);
-        if (ventaDoc.exists()) await actualizarStock([ventaDoc.data()]);
+        if (ventaDoc.exists()) {
+          try {
+            await actualizarStockTx([ventaDoc.data()]);
+          } catch (e) {
+            alert(
+              `No se pudo cambiar a 'venta' por stock insuficiente.\n${e.message}`
+            );
+            await updateDoc(docRef, { estado: "separado" });
+          }
+        }
       }
       // refresco simple
       if (coleccion === "ventas") cargarDatos();
@@ -319,7 +537,7 @@ const VentasEncargos = () => {
           <VentasForm
             productoEscaneado={productoEscaneado}
             onAgregar={(items) =>
-              guardarVentaConConsecutivo(items, handleAgregarVenta)
+              guardarVentaConConsecutivo(items, handleAgregarVentaTx)
             }
             onAgregarEncargo={handleAgregarEncargo}
           />
@@ -327,7 +545,7 @@ const VentasEncargos = () => {
           <VentasForm
             productoEscaneado={productoEscaneado}
             onAgregar={(items) =>
-              guardarVentaConConsecutivo(items, handleAgregarVenta)
+              guardarVentaConConsecutivo(items, handleAgregarVentaTx)
             }
             onAgregarEncargo={handleAgregarEncargo}
           />
