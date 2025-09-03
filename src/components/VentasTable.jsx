@@ -3,6 +3,7 @@ import CardTable from "./CardTable"; // Ajusta la ruta
 
 const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
   const [fechasExpandidas, setFechasExpandidas] = useState({});
+  const SHOW_DETAILS_AS_TABLE = true; // usar tabla en lugar de cards
 
   // Función para extraer fecha formateada
   const formatearFecha = (timestamp) => {
@@ -23,6 +24,30 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+  const getEstadoBadgeClass = (estado) => {
+    switch (estado) {
+      case "venta":
+        return "badge badge-paid";
+      case "separado":
+        return "badge badge-pending";
+      case "encargo":
+        return "badge badge-warning";
+      default:
+        return "badge badge-default";
+    }
+  };
+  const getEstadoText = (estado) => {
+    switch (estado) {
+      case "venta":
+        return "Venta";
+      case "separado":
+        return "Separado";
+      case "encargo":
+        return "Encargo";
+      default:
+        return "N/A";
+    }
   };
 
   // Agrupar ventas por fecha
@@ -114,116 +139,84 @@ const VentasTable = ({ ventas, onActualizarEstado, totalVentas, role }) => {
                     </td>
                   </tr>
 
-                  {estaExpandida &&
-                    ventasDelDia.map((v) => (
-                      <tr key={v.id}>
-                        <td colSpan={3}>
-                          <div className="venta-detail">
-                            <div className="grid">
-                              {/* Columna izquierda */}
-                              <div>
-                                <div
-                                  style={{
-                                    fontWeight: 700,
-                                    color: "#1976d2",
-                                    marginBottom: 5,
-                                  }}
-                                >
-                                  {v.prenda}
-                                </div>
-                                <div>
-                                  <b>Talla:</b> {v.talla}
-                                </div>
-                                <div
-                                  style={{
-                                    fontWeight: 500,
-                                    color: "#388e3c",
-                                    margin: "5px 0",
-                                  }}
-                                >
-                                  <b>Precio Unit.:</b> $
-                                  {parseInt(v.precio).toLocaleString("es-CO")}
-                                </div>
-                                <div>
-                                  <b>Método Pago:</b> {v.metodoPago || "N/A"}
-                                </div>
-                                <div>
-                                  <b>Cliente:</b>{" "}
-                                  {typeof v.cliente === "string"
-                                    ? v.cliente
-                                    : v.cliente?.nombre || "N/A"}
-                                </div>
-                              </div>
-                              {/* Columna derecha */}
-                              <div>
-                                <div>
-                                  <b>Colegio:</b> {v.colegio}
-                                </div>
-                                <div>
-                                  <b>Cantidad:</b> {v.cantidad}
-                                </div>
-                                <div
-                                  style={{
-                                    fontWeight: 700,
-                                    color: "#388e3c",
-                                    margin: "5px 0",
-                                  }}
-                                >
-                                  Total: $
-                                  {parseInt(
-                                    v.precio * v.cantidad
-                                  ).toLocaleString("es-CO")}
-                                </div>
-                                <div>
-                                  <b>Estado:</b>{" "}
-                                  <span
-                                    style={{
-                                      color: "#1976d2",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {v.estado || "venta"}
-                                  </span>
-                                  {v.estado === "separado" &&
-                                    role === "Admin" && (
-                                      <button
-                                        onClick={() => marcarComoPagado(v.id)}
-                                        style={{
-                                          marginLeft: "10px",
-                                          padding: "3px 8px",
-                                          backgroundColor: "#4CAF50",
-                                          color: "white",
-                                          border: "none",
-                                          borderRadius: "4px",
-                                          cursor: "pointer",
-                                          fontWeight: 600,
-                                        }}
-                                      >
-                                        Marcar como pagado
-                                      </button>
-                                    )}
-                                </div>
-                                {v.estado === "separado" && (
-                                  <>
-                                    <div>
-                                      <b>Abono:</b> $
-                                      {v.abono?.toLocaleString("es-CO") || "0"}
-                                    </div>
-                                    <div>
-                                      <b>Saldo:</b> $
-                                      {v.saldo?.toLocaleString("es-CO") || "0"}
-                                    </div>
-                                  </>
-                                )}
-                                <div>
-                                  <b>Hora:</b> {formatearHora(v.fechaHora)}
-                                </div>
-                              </div>
+                  {estaExpandida && (
+                    <tr className="expanded-details">
+                      <td colSpan="3">
+                        <div className="details-container">
+                          {true ? ( // 🔄 Cambia a false si quieres volver a cards
+                            <div className="table-wrapper">
+                              <table className="ventas-detalle-table">
+                                <thead>
+                                  <tr>
+                                    <th>Producto</th>
+                                    <th>Talla</th>
+                                    <th>Cant.</th>
+                                    <th>P. Unit.</th>
+                                    <th>Total</th>
+                                    <th>Hora</th>
+                                    <th>Método</th>
+                                    <th>Cliente</th>
+                                    <th>Estado</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ventasDelDia.map((v) => (
+                                    <tr key={v.id}>
+                                      <td className="td-strong">{v.prenda}</td>
+                                      <td className="text-center">{v.talla}</td>
+                                      <td className="text-center">
+                                        {v.cantidad}
+                                      </td>
+                                      <td className="text-right">
+                                        $
+                                        {parseInt(v.precio).toLocaleString(
+                                          "es-CO"
+                                        )}
+                                      </td>
+                                      <td className="text-right">
+                                        $
+                                        {(
+                                          parseInt(v.precio) * v.cantidad
+                                        ).toLocaleString("es-CO")}
+                                      </td>
+                                      <td>{formatearHora(v.fechaHora)}</td>
+                                      <td>{v.metodoPago || "N/A"}</td>
+                                      <td>
+                                        {typeof v.cliente === "string"
+                                          ? v.cliente
+                                          : v.cliente?.nombre || "N/A"}
+                                      </td>
+                                      <td>
+                                        <span
+                                          className={getEstadoBadgeClass(
+                                            v.estado
+                                          )}
+                                          style={{
+                                            padding: "4px 8px",
+                                            borderRadius: "8px",
+                                          }}
+                                        >
+                                          {getEstadoText(v.estado)}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          ) : (
+                            <div className="details-grid">
+                              {ventasDelDia.map((v) => (
+                                <div key={v.id} className="venta-card">
+                                  {/* contenido de tus cards originales */}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </React.Fragment>
               );
             })}

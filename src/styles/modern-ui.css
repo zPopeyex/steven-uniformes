@@ -1,0 +1,597 @@
+/* ===== EncargosTable (estilos movidos desde el componente) ===== */
+.modern-encargos-table {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+    overflow: hidden;
+    margin-bottom: 24px
+}
+
+.modern-encargos-table .table-header {
+    background: linear-gradient(135deg, #0052cc, #0040a3);
+    color: #fff;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center
+}
+
+.modern-encargos-table .table-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px
+}
+
+.modern-encargos-table .table-stats {
+    display: flex;
+    gap: 20px
+}
+
+.modern-encargos-table .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    opacity: .9
+}
+
+.modern-encargos-table .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: #6b7280
+}
+
+.modern-encargos-table .empty-icon {
+    font-size: 48px;
+    color: #d1d5db;
+    margin-bottom: 16px
+}
+
+.modern-encargos-table .empty-state h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.2rem;
+    color: #374151
+}
+
+.modern-encargos-table .table-container {
+    padding: 0
+}
+
+.modern-encargos-table .table-wrapper {
+    overflow-x: auto
+}
+
+.modern-encargos-table .encargos-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px
+}
+
+.modern-encargos-table .encargos-table thead tr {
+    background: #f8faff
+}
+
+.modern-encargos-table .encargos-table th {
+    padding: 16px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 14px;
+    white-space: nowrap
+}
+
+.modern-encargos-table .col-numero {
+    width: 140px
+}
+
+.modern-encargos-table .col-cliente {
+    width: 200px
+}
+
+.modern-encargos-table .col-fecha {
+    width: 110px
+}
+
+.modern-encargos-table .col-total {
+    width: 100px
+}
+
+.modern-encargos-table .col-abono {
+    width: 100px
+}
+
+.modern-encargos-table .col-saldo {
+    width: 140px
+}
+
+.modern-encargos-table .col-estado {
+    width: 120px
+}
+
+.modern-encargos-table .col-acciones {
+    width: 150px
+}
+
+.modern-encargos-table .table-row {
+    transition: .2s;
+    border-bottom: 1px solid #f3f4f6
+}
+
+.modern-encargos-table .table-row:hover {
+    background: #f9fbff
+}
+
+.modern-encargos-table .table-row td {
+    padding: 16px 12px;
+    vertical-align: middle;
+    font-size: 14px
+}
+
+.modern-encargos-table .numero-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f0f8ff;
+    border: 2px solid #e3f2fd;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: .2s;
+    font-weight: 600;
+    color: #0052cc;
+    width: 100%;
+    justify-content: space-between
+}
+
+.modern-encargos-table .numero-button:hover {
+    background: #e3f2fd;
+    border-color: #0052cc;
+    transform: translateY(-1px)
+}
+
+.modern-encargos-table .cliente-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px
+}
+
+.modern-encargos-table .cliente-nombre {
+    font-weight: 600;
+    color: #1f2937
+}
+
+.modern-encargos-table .cliente-telefono {
+    font-size: 12px;
+    color: #6b7280
+}
+
+.modern-encargos-table .fecha-text {
+    font-size: 13px;
+    color: #374151
+}
+
+.modern-encargos-table .total-amount {
+    font-weight: 600;
+    color: #0052cc
+}
+
+.modern-encargos-table .abono-amount {
+    font-weight: 500;
+    color: #21ba45
+}
+
+.modern-encargos-table .saldo-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px
+}
+
+.modern-encargos-table .saldo-amount {
+    font-weight: 600
+}
+
+.modern-encargos-table .saldo-amount.paid {
+    color: #21ba45
+}
+
+.modern-encargos-table .saldo-amount.pending {
+    color: #dc2626
+}
+
+.modern-encargos-table .saldo-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-align: center
+}
+
+.modern-encargos-table .saldo-badge.paid {
+    background: #d1fae5;
+    color: #065f46
+}
+
+.modern-encargos-table .saldo-badge.pending {
+    background: #fef2f2;
+    color: #991b1b
+}
+
+.modern-encargos-table .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap
+}
+
+.modern-encargos-table .badge-pending {
+    background: #fef3c7;
+    color: #92400e
+}
+
+.modern-encargos-table .badge-paid {
+    background: #d1fae5;
+    color: #065f46
+}
+
+.modern-encargos-table .badge-delivered {
+    background: #dbeafe;
+    color: #1e40af
+}
+
+.modern-encargos-table .badge-cancelled {
+    background: #fecaca;
+    color: #991b1b
+}
+
+.modern-encargos-table .actions-group {
+    display: flex;
+    gap: 8px;
+    justify-content: center
+}
+
+.modern-encargos-table .action-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: .2s;
+    font-size: 14px
+}
+
+.modern-encargos-table .btn-view {
+    background: #f0f8ff;
+    color: #0052cc;
+    border: 1px solid #e3f2fd
+}
+
+.modern-encargos-table .btn-view:hover {
+    background: #e3f2fd;
+    border-color: #0052cc;
+    transform: translateY(-1px)
+}
+
+.modern-encargos-table .btn-complete {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #dcfce7
+}
+
+.modern-encargos-table .btn-complete:hover {
+    background: #dcfce7;
+    border-color: #16a34a;
+    transform: translateY(-1px)
+}
+
+.modern-encargos-table .btn-cancel {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca
+}
+
+.modern-encargos-table .btn-cancel:hover {
+    background: #fecaca;
+    border-color: #dc2626;
+    transform: translateY(-1px)
+}
+
+.modern-encargos-table .expanded-row {
+    background: #f8faff
+}
+
+.modern-encargos-table .expanded-row td {
+    padding: 0
+}
+
+.modern-encargos-table .encargo-details {
+    padding: 24px;
+    border-top: 2px solid #e5e7eb
+}
+
+.modern-encargos-table .details-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 24px
+}
+
+.modern-encargos-table .client-details h4,
+.modern-encargos-table .totals-summary h4,
+.modern-encargos-table .products-section h4 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 10px
+}
+
+.modern-encargos-table .client-info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px
+}
+
+.modern-encargos-table .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb
+}
+
+.modern-encargos-table .info-label {
+    font-weight: 500;
+    color: #6b7280
+}
+
+.modern-encargos-table .info-value {
+    font-weight: 600;
+    color: #1f2937
+}
+
+.modern-encargos-table .totals-summary h4 {
+    justify-content: space-between
+}
+
+.modern-encargos-table .historial-btn {
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: .2s
+}
+
+.modern-encargos-table .historial-btn:hover {
+    background: #c7d2fe;
+    transform: translateY(-1px)
+}
+
+.modern-encargos-table .summary-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px
+}
+
+.modern-encargos-table .summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb
+}
+
+.modern-encargos-table .summary-label {
+    font-weight: 500;
+    color: #6b7280
+}
+
+.modern-encargos-table .summary-value {
+    font-weight: 700;
+    font-size: 16px
+}
+
+.modern-encargos-table .summary-value.total {
+    color: #0052cc
+}
+
+.modern-encargos-table .summary-value.abono {
+    color: #21ba45
+}
+
+.modern-encargos-table .summary-value.saldo.paid {
+    color: #21ba45
+}
+
+.modern-encargos-table .summary-value.saldo.pending {
+    color: #dc2626
+}
+
+.modern-encargos-table .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 12px
+}
+
+.modern-encargos-table .status-indicator.paid {
+    color: #21ba45
+}
+
+.modern-encargos-table .status-indicator.pending {
+    color: #dc2626
+}
+
+.modern-encargos-table .products-section {
+    margin-top: 24px
+}
+
+.modern-encargos-table .products-table-wrapper {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden
+}
+
+.modern-encargos-table .products-table {
+    width: 100%;
+    border-collapse: collapse
+}
+
+.modern-encargos-table .products-table th {
+    background: #f8faff;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 13px
+}
+
+.modern-encargos-table .product-row td {
+    padding: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px
+}
+
+.modern-encargos-table .product-row:last-child td {
+    border-bottom: none
+}
+
+.modern-encargos-table .product-name {
+    font-weight: 600;
+    color: #1f2937
+}
+
+.modern-encargos-table .product-size,
+.modern-encargos-table .product-qty {
+    text-align: center
+}
+
+.modern-encargos-table .product-price,
+.modern-encargos-table .product-total {
+    text-align: right;
+    font-weight: 600
+}
+
+.modern-encargos-table .product-total {
+    color: #0052cc
+}
+
+.modern-encargos-table .product-school {
+    color: #6b7280
+}
+
+.modern-encargos-table .delivery-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600
+}
+
+.modern-encargos-table .delivery-badge.delivered {
+    background: #d1fae5;
+    color: #065f46
+}
+
+.modern-encargos-table .delivery-badge.pending {
+    background: #fef3c7;
+    color: #92400e
+}
+
+@media (max-width:1024px) {
+    .modern-encargos-table .details-header {
+        grid-template-columns: 1fr;
+        gap: 24px
+    }
+
+    .modern-encargos-table .actions-group {
+        flex-wrap: wrap
+    }
+
+    .modern-encargos-table .action-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 12px
+    }
+}
+
+@media (max-width:768px) {
+    .modern-encargos-table .table-header {
+        padding: 16px 20px;
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start
+    }
+
+    .modern-encargos-table .table-header h3 {
+        font-size: 1.1rem
+    }
+
+    .modern-encargos-table .encargos-table {
+        min-width: 700px
+    }
+
+    .modern-encargos-table .encargos-table th,
+    .modern-encargos-table .table-row td {
+        padding: 12px 8px;
+        font-size: 12px
+    }
+
+    .modern-encargos-table .encargo-details {
+        padding: 16px
+    }
+
+    .modern-encargos-table .products-table th,
+    .modern-encargos-table .product-row td {
+        padding: 8px 6px;
+        font-size: 11px
+    }
+}
+
+@media (max-width:480px) {
+    .modern-encargos-table {
+        margin: 0 -10px 24px -10px;
+        border-radius: 0
+    }
+
+    .modern-encargos-table .table-header {
+        padding: 16px
+    }
+
+    .modern-encargos-table .encargos-table {
+        min-width: 600px
+    }
+
+    .modern-encargos-table .summary-grid {
+        gap: 8px
+    }
+
+    .modern-encargos-table .summary-item {
+        padding: 8px 12px
+    }
+}
