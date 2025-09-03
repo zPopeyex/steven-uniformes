@@ -1,35 +1,23 @@
-// 📄 src/pages/Stock.jsx
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import { FaBoxes, FaFilter } from "react-icons/fa";
+import { FaBoxes, FaFilter, FaTable, FaTh } from "react-icons/fa";
+import { useStockPivot } from "../hooks/useStockPivot";
+import StockTable from "../components/stock/StockTable";
+import StockCards from "../components/stock/StockCards";
+import "../styles/stock.css";
 
-// --- Helpers de normalización (evita perder filas por acentos/espacios) ---
-const removeDiacritics = (str) =>
-  String(str || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/ñ/g, "n")
-    .replace(/Ñ/g, "N");
-
-const norm = (s) => removeDiacritics(String(s || "").trim().toLowerCase());
-
-const normalizeTalla = (v) => {
-  const t = String(v ?? "").trim().toUpperCase();
-  const mapTxt = { S: "S", M: "M", L: "L", XL: "XL", XXL: "XXL" };
-  if (mapTxt[t]) return mapTxt[t];
-  const num = t.replace(/[^\d]/g, "");
-  return num ? Number(num) : null;
-};
-
-// Orden fijo de columnas
-const TALLAS = [6, 8, 10, 12, 14, 16, "S", "M", "L", "XL", "XXL"];
 
 const Stock = () => {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("");
   const [search, setSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState("todos");
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('stock-view-mode') || 'table';
+  });
+  const [showFilters, setShowFilters] = useState(false);
   const inputRef = useRef(null);
 
   // Suscripción al stock en tiempo real
@@ -53,164 +41,183 @@ const Stock = () => {
     return () => unsubscribe();
   }, []);
 
-  // Pivot: plantel -> producto -> tallas (SIEMPRE sumando)
-  const { byPlantel, labelPlantel } = useMemo(() => {
-    const byPlantel = new Map();
-    const labelPlantel = new Map();
-
-    for (const item of productos) {
-      const plantelKey = norm(item.colegio);
-      const productoKey = norm(item.prenda);
-      const tallaKey = normalizeTalla(item.talla);
-      const qty = Number(item.cantidad) || 0;
-
-      if (!plantelKey || !productoKey || !tallaKey) continue;
-      if (!TALLAS.includes(tallaKey)) continue;
-
-      if (!byPlantel.has(plantelKey)) byPlantel.set(plantelKey, new Map());
-      if (!labelPlantel.has(plantelKey))
-        labelPlantel.set(plantelKey, String(item.colegio).trim());
-
-      const byProducto = byPlantel.get(plantelKey);
-      if (!byProducto.has(productoKey)) {
-        byProducto.set(productoKey, {
-          label: String(item.prenda).trim(),
-          tallas: Object.fromEntries(TALLAS.map((t) => [t, 0])),
-        });
-      }
-      byProducto.get(productoKey).tallas[tallaKey] += qty; // SUMA, no reemplaza
-    }
-
-    return { byPlantel, labelPlantel };
-  }, [productos]);
-
-  // Tabs dinámicas (key normalizada + label original)
-  const planteles = useMemo(
-    () =>
-      Array.from(labelPlantel.entries())
-        .sort((a, b) => a[1].localeCompare(b[1]))
-        .map(([key, label]) => ({ key, label })),
-    [labelPlantel]
-  );
+  // Hook para procesamiento de datos
+  const { planteles, getRowsForPlantel, getBadgeClass, getStockStatus, TALLAS } = useStockPivot(productos);
 
   // Tab por defecto
   useEffect(() => {
     if (planteles.length && !activeTab) setActiveTab(planteles[0].key);
   }, [planteles, activeTab]);
 
-  // Filas del tab activo (solo productos con total > 0)
-  const rows = useMemo(() => {
-    const byProducto = byPlantel.get(activeTab);
-    if (!byProducto) return [];
-    return Array.from(byProducto.values())
-      .map((row) => {
-        const total = TALLAS.reduce((sum, t) => sum + (row.tallas[t] || 0), 0);
-        return { producto: row.label, ...row.tallas, total };
-      })
-      .filter((r) => r.total > 0)
-      .sort((a, b) => a.producto.localeCompare(b.producto));
-  }, [byPlantel, activeTab]);
+  // Guardar preferencia de vista
+  useEffect(() => {
+    localStorage.setItem('stock-view-mode', viewMode);
+  }, [viewMode]);
 
-  // Badges
-  const getBadgeClass = (n) => {
-    if (n === 0) return "badge--zero";
-    if (n <= 4) return "badge--low";
-    if (n <= 8) return "badge--medium";
-    return "badge--high";
-  };
+  // Filas filtradas del tab activo
+  const rows = getRowsForPlantel(activeTab, search, stockFilter);
 
   const handleFilterClick = () => {
-    inputRef.current?.focus();
+    setShowFilters(!showFilters);
   };
 
-  return (
-    <div style={{ padding: 20 }}>
-      {loading ? (
-        <div
-          style={{
-            fontWeight: "bold",
-            fontSize: "18px",
-            backgroundColor: "#f4f4f4",
-            padding: "20px",
-            borderRadius: "8px",
-          }}
-        >
-          ⏳ Cargando stock...
-        </div>
-      ) : (
-        <div className="stock-card">
-          <div className="card-header">
-            <FaBoxes color="var(--blue)" />
-            <h2>Inventario Actual (Stock)</h2>
-          </div>
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+  };
 
-          <div className="card-controls">
+  const exportToCSV = () => {
+    const activePlantel = planteles.find(p => p.key === activeTab);
+    if (!activePlantel) return;
+
+    const csvRows = [
+      ['Producto', ...TALLAS, 'Total'].join(','),
+      ...rows.map(row => [
+        `"${row.label}"`,
+        ...TALLAS.map(t => row.tallas[t] || 0),
+        row.total
+      ].join(','))
+    ];
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `stock-${activePlantel.label}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (loading) {
+    return (
+      <div className="stock-container">
+        <div className="stock-loading">
+          <div className="loading-content">
+            <div className="loading-spinner"></div>
+            <span className="loading-text">Cargando inventario...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="stock-container">
+      {/* Header con controles */}
+      <div className="stock-header">
+        <h1 className="stock-title">
+          <FaBoxes />
+          Inventario Actual (Stock)
+        </h1>
+        
+        <div className="stock-controls">
+          <div className="stock-search">
+            <i className="fas fa-search stock-search-icon"></i>
             <input
               ref={inputRef}
               type="text"
+              className="stock-search-input"
               placeholder="Buscar plantel o producto…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <button onClick={handleFilterClick}>
-              <FaFilter /> Filtrar
+          </div>
+          
+          <div className="filters-dropdown">
+            <button 
+              className="stock-filter-btn"
+              onClick={handleFilterClick}
+            >
+              <FaFilter />
+              Filtros
+            </button>
+            
+            {showFilters && (
+              <div className="filters-menu">
+                <div className="filter-group">
+                  <label className="filter-label">Estado de Stock</label>
+                  <select
+                    className="filter-select"
+                    value={stockFilter}
+                    onChange={(e) => setStockFilter(e.target.value)}
+                  >
+                    <option value="todos">Todos los productos</option>
+                    <option value="con-stock">Con stock</option>
+                    <option value="bajo-stock">Stock bajo (≤4)</option>
+                    <option value="sin-stock">Sin stock</option>
+                    <option value="negativo">Stock negativo</option>
+                  </select>
+                </div>
+                
+                <button 
+                  className="btn btn-primary btn-sm"
+                  onClick={exportToCSV}
+                  style={{ width: '100%', marginTop: '8px' }}
+                >
+                  <i className="fas fa-download"></i>
+                  Exportar CSV
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <div className="view-toggle">
+            <button
+              className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => handleViewModeChange('table')}
+            >
+              <FaTable />
+              Tabla
+            </button>
+            <button
+              className={`view-toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+              onClick={() => handleViewModeChange('cards')}
+            >
+              <FaTh />
+              Tarjetas
             </button>
           </div>
-
-          <div className="tab-controls" role="tablist">
-            {planteles.map((pl) => (
-              <button
-                key={pl.key}
-                role="tab"
-                aria-selected={activeTab === pl.key}
-                className={`tab-btn ${activeTab === pl.key ? "active" : ""}`}
-                onClick={() => setActiveTab(pl.key)}
-              >
-                {pl.label}
-              </button>
-            ))}
-          </div>
-
-          <div role="tabpanel" className="tab-content">
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    {TALLAS.map((t) => (
-                      <th key={t}>{t}</th>
-                    ))}
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows
-                    .filter((r) =>
-                      r.producto.toLowerCase().includes(search.toLowerCase())
-                    )
-                    .map((row) => (
-                      <tr key={row.producto}>
-                        <td>{row.producto}</td>
-                        {TALLAS.map((t) => (
-                          <td key={`${row.producto}-${t}`}>
-                            <span className={`badge ${getBadgeClass(row[t])}`}>
-                              {row[t]}
-                            </span>
-                          </td>
-                        ))}
-                        <td>
-                          <span className={`badge ${getBadgeClass(row.total)}`}>
-                            {row.total}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
-      )}
+      </div>
+
+      {/* Tabs de planteles */}
+      <div className="stock-tabs" role="tablist">
+        {planteles.map((plantel) => {
+          const plantelRows = getRowsForPlantel(plantel.key, "", "todos");
+          return (
+            <button
+              key={plantel.key}
+              role="tab"
+              aria-selected={activeTab === plantel.key}
+              className={`stock-tab ${activeTab === plantel.key ? "active" : ""}`}
+              onClick={() => setActiveTab(plantel.key)}
+            >
+              {plantel.label}
+              <span className="tab-count">{plantelRows.length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Contenido del tab activo */}
+      <div role="tabpanel">
+        {viewMode === 'table' ? (
+          <StockTable 
+            rows={rows}
+            TALLAS={TALLAS}
+            getBadgeClass={getBadgeClass}
+          />
+        ) : (
+          <StockCards 
+            rows={rows}
+            TALLAS={TALLAS}
+            getBadgeClass={getBadgeClass}
+            getStockStatus={getStockStatus}
+          />
+        )}
+      </div>
     </div>
   );
 };
