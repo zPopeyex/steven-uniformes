@@ -95,7 +95,7 @@ function App() {
           <Route
             path="/reportes-modistas"
             element={
-              <RoleRoute requiredPermissions={["reportes"]}>
+              <RoleRoute requiredPerm="reportes_modistas">
                 <ReportesModistas />
               </RoleRoute>
             }
@@ -108,9 +108,30 @@ function App() {
               </RoleRoute>
             }
           />
-          <Route path="/proveedores" element={<Proveedores />} />
-          <Route path="/gastos" element={<Gastos />} />
-          <Route path="/clientes-pedidos" element={<ClientesPedidos />} />
+          <Route
+            path="/proveedores"
+            element={
+              <RoleRoute requiredPerm="proveedores">
+                <Proveedores />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/gastos"
+            element={
+              <RoleRoute requiredPerm="gastos">
+                <Gastos />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/clientes-pedidos"
+            element={
+              <RoleRoute requiredPerm="clientes_pedidos">
+                <ClientesPedidos />
+              </RoleRoute>
+            }
+          />
         </Routes>
       </main>
     </div>

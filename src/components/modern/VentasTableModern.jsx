@@ -176,9 +176,18 @@ const VentasTableModern = ({
                                           <td>{formatearHora(v.fechaHora)}</td>
                                           <td>{v.metodoPago || "N/A"}</td>
                                           <td>
-                                            {typeof v.cliente === "string"
-                                              ? v.cliente
-                                              : v.cliente?.nombre || "N/A"}
+                                            {(() => {
+                                              if (typeof v.cliente === "string" && v.cliente.trim()) {
+                                                return v.cliente;
+                                              }
+                                              if (v.cliente?.nombre) {
+                                                return v.cliente.nombre;
+                                              }
+                                              if (v.clienteResumen?.nombre) {
+                                                return v.clienteResumen.nombre;
+                                              }
+                                              return "sin cliente";
+                                            })()}
                                           </td>
                                           <td>
                                             <span

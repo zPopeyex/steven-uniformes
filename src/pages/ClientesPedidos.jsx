@@ -33,6 +33,7 @@ import {
   runTransaction,
   where,
   getDocs,
+  getDoc,
 } from "firebase/firestore";
 import "../styles/client-table.css";
 import "../styles/sistema-completo.css";
@@ -759,27 +760,57 @@ export default function ClientesPedidos() {
       };
     });
 
-  const verDetallePedido = (pedido, cliente) => {
-    const items = normalizarLineasPedido(pedido?.items || []);
-    const total = Number(
-      pedido?.total ?? items.reduce((s, it) => s + (Number(it.vrTotal) || 0), 0)
-    );
-    const abono = Number(pedido?.abono || 0);
-    const saldo = Number(pedido?.saldo ?? total - abono);
+  const verDetallePedido = async (pedido, cliente) => {
+    try {
+      let latest = pedido;
+      if (pedido?.id) {
+        const snap = await getDoc(doc(db, "pedidos", pedido.id));
+        if (snap.exists()) latest = { id: snap.id, ...snap.data() };
+      }
+      const items = normalizarLineasPedido(latest?.items || []);
+      const total = Number(
+        latest?.total ?? items.reduce((s, it) => s + (Number(it.vrTotal) || 0), 0)
+      );
+      const abono = Number(latest?.abono || 0);
+      const saldo = Number(latest?.saldo ?? total - abono);
 
-    setShowInvoicePreview({
-      tipo: "pedidos",
-      data: {
-        ...pedido,
-        numero: pedido?.numero || pedido?.id || "",
-        createdAt: pedido?.createdAt || new Date().toISOString(),
-        cliente: cliente || pedido?.cliente || {},
-        items,
-        total,
-        abono,
-        saldo,
-      },
-    });
+      setShowInvoicePreview({
+        tipo: "pedidos",
+        data: {
+          ...latest,
+          tipo: "pedidos",
+          numero: latest?.numero || latest?.id || "",
+          createdAt: latest?.createdAt || new Date().toISOString(),
+          cliente: cliente || latest?.cliente || {},
+          items,
+          total,
+          abono,
+          saldo,
+        },
+      });
+    } catch (e) {
+      // fallback a los datos actuales si algo falla
+      const items = normalizarLineasPedido(pedido?.items || []);
+      const total = Number(
+        pedido?.total ?? items.reduce((s, it) => s + (Number(it.vrTotal) || 0), 0)
+      );
+      const abono = Number(pedido?.abono || 0);
+      const saldo = Number(pedido?.saldo ?? total - abono);
+      setShowInvoicePreview({
+        tipo: "pedidos",
+        data: {
+          ...pedido,
+          tipo: "pedidos",
+          numero: pedido?.numero || pedido?.id || "",
+          createdAt: pedido?.createdAt || new Date().toISOString(),
+          cliente: cliente || pedido?.cliente || {},
+          items,
+          total,
+          abono,
+          saldo,
+        },
+      });
+    }
   };
 
   // Plantillas
@@ -1375,7 +1406,7 @@ export default function ClientesPedidos() {
                           style={{ display: "flex", gap: 8 }}
                         >
                           <button
-                            className="btn btn-sm btn-secondary"
+                            className="btn btn-sm btn-secondary icon-btn"
                             onClick={() => {
                               setEditingClient(cliente);
                               setClientForm(cliente);
@@ -1385,13 +1416,13 @@ export default function ClientesPedidos() {
                             <FaEdit />
                           </button>
                           <button
-                            className="btn btn-sm btn-secondary"
+                            className="btn btn-sm btn-secondary icon-btn"
                             onClick={() => handleToggleClientActive(cliente.id)}
                           >
                             {cliente.activo ? "🚫" : "✓"}
                           </button>
                           <button
-                            className="btn btn-sm btn-danger"
+                            className="btn btn-sm btn-danger icon-btn"
                             onClick={() => handleDeleteClient(cliente.id)}
                           >
                             <FaTrash />
@@ -1785,6 +1816,11 @@ export default function ClientesPedidos() {
                                                   i.total ??
                                                   cantidad * unit
                                               ),
+                                              // preserva estado de entrega por item
+                                              entregado:
+                                                i.entregado === true ||
+                                                i.estadoEntrega === "entregado" ||
+                                                i.delivery === true,
                                             };
                                           });
 
@@ -2312,22 +2348,17 @@ export default function ClientesPedidos() {
                           style={{ display: "flex", gap: 8 }}
                         >
                           <button
-                            className="btn btn-sm btn-primary"
+                            className="btn btn-sm btn-primary icon-btn"
                             onClick={() => {
-                              const cli = clientes.find(
-                                (c) => c.id === pedido.clienteId
-                              );
-                              setShowInvoicePreview({
-                                tipo: "pedidos",
-                                data: { ...pedido, cliente: cli },
-                              });
+                              const cli = clientes.find((c) => c.id === pedido.clienteId);
+                              verDetallePedido(pedido, cli);
                             }}
                             title="Ver"
                           >
                             <FaEye />
                           </button>
                           <button
-                            className="btn btn-sm btn-secondary"
+                            className="btn btn-sm btn-secondary icon-btn"
                             onClick={() => {
                               const clienteData = clientes.find(
                                 (c) => c.id === pedido.clienteId
@@ -2343,7 +2374,7 @@ export default function ClientesPedidos() {
                           </button>
 
                           <button
-                            className="btn btn-sm btn-success"
+                            className="btn btn-sm btn-success icon-btn"
                             onClick={() => {
                               const clienteData = clientes.find(
                                 (c) => c.id === pedido.clienteId
@@ -2358,7 +2389,7 @@ export default function ClientesPedidos() {
                             <FaWhatsapp />
                           </button>
                           <button
-                            className="btn btn-sm btn-secondary"
+                            className="btn btn-sm btn-secondary icon-btn"
                             onClick={() => startEditPedido(pedido)}
                             title="Editar pedido"
                           >
@@ -2366,7 +2397,7 @@ export default function ClientesPedidos() {
                           </button>
 
                           <button
-                            className="btn btn-sm btn-danger"
+                            className="btn btn-sm btn-danger icon-btn"
                             onClick={() =>
                               handleDeletePedido(pedido.id, pedido.numero)
                             }
