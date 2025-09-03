@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from "react";
-import { db } from "../firebase/firebaseConfig";
+﻿import React, { useRef, useEffect, useState } from "react";
+import { db } from "../firebase/firebaseConfig";
 import {
   collection,
   addDoc,
@@ -7,10 +7,15 @@ import {
   deleteDoc,
   updateDoc,
   doc,
-} from "firebase/firestore";
-import QRCode from "react-qr-code"; // <- ya no se usa, lo dejamos para no romper nada (puedes quitarlo luego)
-import QRCodeLib from "qrcode"; // <- ya no se usa en descargar, lo dejamos igual
+} from "firebase/firestore";
+import QRCode from "react-qr-code"; // <- ya no se usa, lo dejamos para no romper nada (puedes quitarlo luego)
+import QRCodeLib from "qrcode"; // <- ya no se usa en descargar, lo dejamos igual
 import CardTable from "../components/CardTable";
+import  CatalogToolbar from "../components/catalogo/CatalogToolbar.jsx";
+import ColegioAccordion from "../components/catalogo/ColegioAccordion.jsx";
+import ProductoAccordion from "../components/catalogo/ProductoAccordion.jsx";
+import TallasTable from "../components/catalogo/TallasTable.jsx";
+import "../styles/catalogo-modern.css";
 import JsBarcode from "jsbarcode";
 
 const Catalogo = () => {
@@ -189,6 +194,49 @@ const Catalogo = () => {
   useEffect(() => {
     cargarCatalogo();
   }, []);
+  // UI moderna (presentacional) bajo feature flag
+  const USE_MODERN_CATALOGO = true;
+  const handleCancelEdit = () => { setProducto({ colegio: "", prenda: "", talla: "", precio: "" }); setEditandoId(null); };
+  const onAddSize = (colegio, prenda = "") => { setProducto({ colegio, prenda, talla: "", precio: "" }); setEditandoId(null); };
+  const toggleColegio = (colegio) => setProductosExpandidos((p) => ({ ...p, [colegio]: !p[colegio] }));
+  const toggleProducto = (colegio, prenda) => setTallasExpandidas((p) => ({ ...p, [colegio]: { ...(p[colegio] || {}), [prenda]: !(p[colegio]?.[prenda]) } }));
+  const totalItems = productos.reduce((sum, col) => sum + col.productos.reduce((s, pr) => s + ((pr.tallas || []).length), 0), 0);
+
+  if (USE_MODERN_CATALOGO) {
+    return (
+      <div className="catalogo-container">
+        <h1 className="catalogo-title">📦 Catálogo</h1>
+        <CatalogToolbar
+          producto={producto}
+          handleChange={handleChange}
+          handleSubmit={handleSubmit}
+          editandoId={editandoId}
+          handleCancelEdit={handleCancelEdit}
+          totalItems={totalItems}
+        />
+        <div className="catalogo-list">
+          {productos.map((colegioObj) => {
+            const isExpanded = !!productosExpandidos[colegioObj.colegio];
+            const expandedProducts = tallasExpandidas[colegioObj.colegio] || {};
+            return (
+              <ColegioAccordion
+                key={colegioObj.colegio}
+                colegioObj={colegioObj}
+                isExpanded={isExpanded}
+                onToggle={() => toggleColegio(colegioObj.colegio)}
+                expandedProducts={expandedProducts}
+                onProductToggle={(prenda) => toggleProducto(colegioObj.colegio, prenda)}
+                onEdit={handleEditar}
+                onDelete={handleEliminar}
+                onDownload={(value, filename) => descargarQR(value, filename)} onAddSize={(colegio, prenda) => onAddSize(colegio, prenda)}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div style={{ padding: 20 }}>
@@ -576,3 +624,4 @@ const Catalogo = () => {
 };
 
 export default Catalogo;
+
