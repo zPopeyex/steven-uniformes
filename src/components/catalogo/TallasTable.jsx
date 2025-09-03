@@ -1,82 +1,49 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import BarcodePreview from "./BarcodePreview.jsx";
 
-function useIsMobile() {
-  const [w, setW] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1024));
-  useEffect(() => {
-    const onR = () => setW(window.innerWidth);
-    window.addEventListener("resize", onR);
-    return () => window.removeEventListener("resize", onR);
-  }, []);
-  return w < 768;
-}
-
-export default function TallasTable({ colegio, prenda, tallas, renderBarcode, onEditar, onEliminar, onDescargar }) {
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    return (
-      <div className="tallas-cards">
-        {tallas.map((t) => {
-          const codeValue = `${colegio}-${prenda}-${t.talla}-${t.precio}`;
-          return (
-            <div className="talla-card" key={t.id}>
-              <div className="card-row">
-                <div className="talla-pill">{t.talla}</div>
-                <div className="price">${Number(t.precio).toLocaleString("es-CO")}</div>
-              </div>
-              <div className="card-actions">
-                <button className="btn btn-warning btn-sm" onClick={() => onEditar({ id: t.id, colegio, prenda, talla: t.talla, precio: t.precio })}>Editar</button>
-                <button className="btn btn-danger btn-sm" onClick={() => onEliminar(t.id)}>Eliminar</button>
-                <button className="btn btn-success btn-sm" onClick={() => onDescargar(codeValue, `barcode_${colegio}_${prenda}_${t.talla}`)}>Descargar</button>
-              </div>
-              <details className="code-details">
-                <summary>Ver código</summary>
-                <div className="barcode-box">
-                  <BarcodePreview height={48}>{renderBarcode(codeValue, 48)}</BarcodePreview>
-                </div>
-              </details>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
+export default function TallasTable({ colegio, producto, tallas, onEdit, onDelete, onDownload }) {
   return (
-    <table className="tallas-table">
-      <thead>
-        <tr>
-          <th>Talla</th>
-          <th>Precio</th>
-          <th>Código</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {tallas.map((t) => {
-          const codeValue = `${colegio}-${prenda}-${t.talla}-${t.precio}`;
-          return (
-            <tr key={t.id}>
-              <td className="td-strong">{t.talla}</td>
-              <td>${Number(t.precio).toLocaleString("es-CO")}</td>
-              <td>
-                <div className="barcode-box">
-                  <BarcodePreview>{renderBarcode(codeValue, 28)}</BarcodePreview>
-                </div>
-              </td>
-              <td>
-                <div className="actions-group">
-                  <button className="btn btn-warning btn-sm" onClick={() => onEditar({ id: t.id, colegio, prenda, talla: t.talla, precio: t.precio })}>Editar</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => onEliminar(t.id)}>Eliminar</button>
-                  <button className="btn btn-success btn-sm" onClick={() => onDescargar(codeValue, `barcode_${colegio}_${prenda}_${t.talla}`)}>Descargar</button>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div className="sizes-table-container">
+      <table className="sizes-table">
+        <thead>
+          <tr>
+            <th>Talla</th>
+            <th>Precio</th>
+            <th>Código de Barras</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tallas.map((t) => {
+            const codeValue = `${colegio}-${producto}-${t.talla}-${t.precio}`;
+            return (
+              <tr key={t.id}>
+                <td className="size-cell">{t.talla}</td>
+                <td className="price-cell">${Number(t.precio).toLocaleString('es-CO')}</td>
+                <td className="barcode-cell">
+                  <div className="barcode-preview" data-barcode-id={codeValue}>
+                    <BarcodePreview value={codeValue} height={28} />
+                  </div>
+                </td>
+                <td className="actions-cell">
+                  <div className="action-buttons">
+                    <button onClick={() => onEdit({ id: t.id, colegio, prenda: producto, talla: t.talla, precio: t.precio })} className="action-btn edit-btn" title="Editar producto" aria-label={`Editar ${producto} talla ${t.talla}`}>
+                      <span role="img" aria-label="editar">✏️</span>Editar
+                    </button>
+                    <button onClick={() => onDelete(t.id)} className="action-btn delete-btn" title="Eliminar producto" aria-label={`Eliminar ${producto} talla ${t.talla}`}>
+                      <span role="img" aria-label="eliminar">🗑️</span>Eliminar
+                    </button>
+                    <button onClick={() => onDownload(codeValue, `barcode_${colegio}_${producto}_${t.talla}`)} className="action-btn download-btn" title="Descargar código de barras" aria-label={`Descargar código de barras de ${producto} talla ${t.talla}`}>
+                      <span role="img" aria-label="descargar">📥</span>Descargar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
