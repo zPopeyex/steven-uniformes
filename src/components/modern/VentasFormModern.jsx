@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
 import ClienteComboBox from "../ClienteComboBox";
@@ -113,10 +113,10 @@ const VentasFormModern = ({
     setVenta((prev) => {
       const updated = { ...prev, [name]: value };
       if (name === "abono") {
-        const total = updatedVenta.cantidad * (updatedVenta.precio || 0);
+        const total = (Number(updated.cantidad) || 0) * (Number(updated.precio) || 0);
         const abono = Number(value || 0); // asegura entero
         const saldo = total - abono;
-        return { ...updatedVenta, abono, saldo: Math.max(saldo, 0) };
+        return { ...updated, abono, saldo: Math.max(saldo, 0) };
       }
 
       return updated;
@@ -190,6 +190,31 @@ const VentasFormModern = ({
   const registrarVenta = async () => {
     if (carrito.length === 0) {
       alert("Agrega al menos un producto al carrito.");
+      return;
+    }
+
+    // Mensaje claro cuando no hay stock suficiente en Venta/Separado
+    if (
+      (venta.estado === "venta" || venta.estado === "separado") &&
+      resumenSolicitud.insuficiente
+    ) {
+      const detalle = resumenSolicitud.violaciones
+        .map(
+          (v) =>
+            `- ${v.prenda || "Producto"} ${v.talla} (${v.colegio}). Disponible: ${v.disponible}, Solicitado: ${v.solicitado}`
+        )
+        .join("\n");
+      const texto =
+        "No hay stock suficiente para:\n" +
+        detalle +
+        "\n\n¿Deseas crear este registro como Encargo?";
+      const crearComoEncargo = window.confirm(texto);
+      if (crearComoEncargo) {
+        setVenta((prev) => ({ ...prev, estado: "encargo" }));
+        setTimeout(() => {
+          registrarVenta();
+        }, 0);
+      }
       return;
     }
 
@@ -351,6 +376,66 @@ const VentasFormModern = ({
         p.talla === venta.talla
     )?.cantidad || 0;
 
+  // Agrupar cantidades por combinación para validar en vivo (solo venta/separado)
+  const resumenSolicitud = useMemo(() => {
+    const isDescuento = venta.estado === "venta" || venta.estado === "separado";
+    const map = new Map();
+    const keyOf = (i) => `${i.colegio}||${i.prenda}||${i.talla}`;
+
+    // Carrito actual: solo items que descuentan stock
+    for (const it of carrito) {
+      if (!(it.estado === "venta" || it.estado === "separado")) continue;
+      const k = keyOf(it);
+      const prev = map.get(k) || { ...it, cantidad: 0 };
+      prev.cantidad += Number(it.cantidad) || 0;
+      map.set(k, prev);
+    }
+
+    // Incluir selección actual si aplica descuento y está completa
+    if (
+      isDescuento &&
+      venta.colegio &&
+      venta.prenda &&
+      venta.talla &&
+      Number(venta.cantidad) > 0
+    ) {
+      const k = `${venta.colegio}||${venta.prenda}||${venta.talla}`;
+      const prev = map.get(k) || {
+        colegio: venta.colegio,
+        prenda: venta.prenda,
+        talla: venta.talla,
+        cantidad: 0,
+      };
+      prev.cantidad += Number(venta.cantidad) || 0;
+      map.set(k, prev);
+    }
+
+    const violaciones = [];
+    for (const [k, req] of map.entries()) {
+      const [colegio, prenda, talla] = k.split("||");
+      const disp =
+        productosDisponibles.find(
+          (p) => p.colegio === colegio && p.prenda === prenda && p.talla === talla
+        )?.cantidad || 0;
+      if (disp < (Number(req.cantidad) || 0)) {
+        violaciones.push({ colegio, prenda, talla, solicitado: req.cantidad, disponible: disp });
+      }
+    }
+    return { violaciones, insuficiente: violaciones.length > 0 };
+  }, [carrito, venta.colegio, venta.prenda, venta.talla, venta.cantidad, venta.estado, productosDisponibles]);
+
+  const violacionActual = useMemo(() => {
+    if (!(venta.colegio && venta.prenda && venta.talla)) return null;
+    return (
+      resumenSolicitud.violaciones.find(
+        (v) =>
+          v.colegio === venta.colegio &&
+          v.prenda === venta.prenda &&
+          v.talla === venta.talla
+      ) || null
+    );
+  }, [resumenSolicitud, venta.colegio, venta.prenda, venta.talla]);
+
   const totalVenta = venta.cantidad * (venta.precio || 0);
   const totalSaldosCarrito = carrito.reduce((acc, i) => {
     const itemTotal =
@@ -453,6 +538,13 @@ const VentasFormModern = ({
                   Stock: <strong>{stockActual}</strong>
                 </span>
               </div>
+              {(venta.estado === "venta" || venta.estado === "separado") &&
+                violacionActual && (
+                  <div style={{ color: "#c0392b", fontSize: 12, marginTop: 4 }}>
+                    No hay stock suficiente. Disponible: {violacionActual.disponible}
+                    . Cantidad solicitada: {violacionActual.solicitado}.
+                  </div>
+                )}
             </div>
           </div>
 
@@ -570,6 +662,21 @@ const VentasFormModern = ({
             Registrar{" "}
             {venta.estado.charAt(0).toUpperCase() + venta.estado.slice(1)}
           </button>
+          {(venta.estado === "venta" || venta.estado === "separado") &&
+            resumenSolicitud.insuficiente && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setVenta((prev) => ({ ...prev, estado: "encargo" }));
+                  setTimeout(() => {
+                    registrarVenta();
+                  }, 0);
+                }}
+              >
+                Crear como Encargo
+              </button>
+            )}
         </div>
       </div>
 

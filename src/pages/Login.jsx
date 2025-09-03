@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import styles from "./Login.module.css";
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
+import LogoImage from "../assets/Logo.jpg";
+import "../styles/login.css";
 
 const Login = () => {
   const { login, loginWithGoogle, register, resetPassword } = useAuth();
@@ -17,6 +19,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [message, setMessage] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
 
   const validate = () => {
     const newErrors = {};
@@ -42,6 +45,28 @@ const Login = () => {
     setMessage("");
   };
 
+  const translateFirebaseError = (error) => {
+    const errorCode = error.code;
+    switch (errorCode) {
+      case 'auth/user-not-found':
+        return 'Usuario no encontrado';
+      case 'auth/wrong-password':
+        return 'Contraseña incorrecta';
+      case 'auth/email-already-in-use':
+        return 'El correo ya está en uso';
+      case 'auth/weak-password':
+        return 'La contraseña es muy débil';
+      case 'auth/invalid-email':
+        return 'Correo electrónico inválido';
+      case 'auth/too-many-requests':
+        return 'Demasiados intentos. Intenta más tarde';
+      case 'auth/network-request-failed':
+        return 'Error de conexión. Verifica tu internet';
+      default:
+        return 'Error de autenticación. Verifica tus datos';
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setAuthError("");
@@ -61,7 +86,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error("Error de autenticación:", error);
-      setAuthError("Error de autenticación. Verifica tus datos.");
+      setAuthError(translateFirebaseError(error));
     } finally {
       setLoading(false);
     }
@@ -76,7 +101,7 @@ const Login = () => {
       navigate("/");
     } catch (error) {
       console.error("Error con Google:", error);
-      setAuthError("Error al iniciar sesión con Google.");
+      setAuthError(translateFirebaseError(error));
     } finally {
       setLoading(false);
     }
@@ -95,179 +120,238 @@ const Login = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>
-          {mode === "register"
-            ? "Crear cuenta"
-            : mode === "reset"
-            ? "Recuperar contraseña"
-            : "Iniciar sesión"}
-        </h1>
-        <p className={styles.subtitle}>
-          {mode === "register"
-            ? "Bienvenido, completa los datos para registrarte."
-            : mode === "reset"
-            ? "Ingresa tu correo para restablecer la contraseña."
-            : "Bienvenido de nuevo"}
-        </p>
+    <div className="login-container">
+      <div className="login-card">
+        <img 
+          src={LogoImage} 
+          alt="Steven Uniformes Logo" 
+          className="login-logo"
+        />
+        
+        <div className="login-header">
+          <h1 className="login-title">
+            {mode === "register"
+              ? "Crear cuenta"
+              : mode === "reset"
+              ? "Recuperar contraseña"
+              : "Iniciar sesión"}
+          </h1>
+          <p className="login-subtitle">
+            {mode === "register"
+              ? "Completa los datos para registrarte"
+              : mode === "reset"
+              ? "Ingresa tu correo para restablecer la contraseña"
+              : "Bienvenido de nuevo al sistema"}
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className={styles.form} noValidate>
-          <div className={styles.inputGroup}>
-            <label htmlFor="email" className={styles.label}>
-              Correo
+        <form 
+          onSubmit={handleSubmit} 
+          className={`login-form ${loading ? 'loading' : ''}`} 
+          noValidate
+        >
+          <div className={`login-input-group ${errors.email ? 'has-error' : ''}`}>
+            <label htmlFor="email" className="login-label">
+              Correo electrónico
             </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              className={styles.input}
-              value={formData.email}
-              onChange={handleChange}
-              onBlur={validate}
-              required
-            />
+            <div className="login-input-wrapper login-input-icon">
+              <FaEnvelope className="login-input-icon-el" />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                className="login-input"
+                value={formData.email}
+                onChange={handleChange}
+                onBlur={validate}
+                placeholder="tucorreo@ejemplo.com"
+                required
+                autoComplete="email"
+              />
+            </div>
             {errors.email && (
-              <span className={styles.error} role="alert">
+              <div className="login-error" role="alert">
+                <FaExclamationCircle />
                 {errors.email}
-              </span>
+              </div>
             )}
           </div>
 
           {mode !== "reset" && (
-            <div className={styles.inputGroup}>
-              <label htmlFor="password" className={styles.label}>
+            <div className={`login-input-group ${errors.password ? 'has-error' : ''}`}>
+              <label htmlFor="password" className="login-label">
                 Contraseña
               </label>
-              <div className={styles.passwordWrapper}>
+              <div className="login-input-wrapper login-input-icon">
+                <FaLock className="login-input-icon-el" />
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  className={styles.input}
+                  className="login-input"
                   value={formData.password}
                   onChange={handleChange}
                   onBlur={validate}
+                  placeholder="Ingresa tu contraseña"
                   required={mode !== "reset"}
+                  autoComplete="current-password"
+                  style={{ paddingRight: '50px' }}
                 />
                 <button
                   type="button"
-                  className={styles.togglePassword}
+                  className="login-password-toggle"
                   onClick={() => setShowPassword((s) => !s)}
-                  aria-label={
-                    showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
-                  }
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
-                  {showPassword ? "🙈" : "👁️"}
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
               </div>
               {errors.password && (
-                <span className={styles.error} role="alert">
+                <div className="login-error" role="alert">
+                  <FaExclamationCircle />
                   {errors.password}
-                </span>
+                </div>
               )}
             </div>
           )}
 
           {mode === "register" && (
-            <div className={styles.inputGroup}>
-              <label htmlFor="nickname" className={styles.label}>
+            <div className="login-input-group">
+              <label htmlFor="nickname" className="login-label">
                 Apodo (opcional)
               </label>
+              <div className="login-input-wrapper">
+                <input
+                  id="nickname"
+                  name="nickname"
+                  type="text"
+                  className="login-input"
+                  value={formData.nickname}
+                  onChange={handleChange}
+                  placeholder="Tu nombre en el sistema"
+                  autoComplete="nickname"
+                />
+              </div>
+            </div>
+          )}
+
+          {mode === "login" && (
+            <div className="login-checkbox-group">
               <input
-                id="nickname"
-                name="nickname"
-                type="text"
-                className={styles.input}
-                value={formData.nickname}
-                onChange={handleChange}
+                id="remember"
+                type="checkbox"
+                className="login-checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
               />
+              <label htmlFor="remember" className="login-checkbox-label">
+                Recordarme
+              </label>
             </div>
           )}
 
           {authError && (
-            <div className={styles.error} role="alert">
+            <div className="login-form-error" role="alert">
+              <FaExclamationCircle />
               {authError}
             </div>
           )}
+          
           {message && (
-            <div className={styles.success} role="status">
+            <div className="login-form-success" role="status">
+              <FaCheckCircle />
               {message}
             </div>
           )}
 
           <button
             type="submit"
-            className={styles.button}
+            className="login-button"
             disabled={!canSubmit() || loading}
             aria-busy={loading}
           >
-            {mode === "reset" ? "Enviar" : "Continuar"}
+            {loading ? (
+              <>
+                <div className="login-button-spinner"></div>
+                Procesando...
+              </>
+            ) : (
+              <>
+                {mode === "register" ? "Crear cuenta" : 
+                 mode === "reset" ? "Enviar correo" : "Ingresar"}
+              </>
+            )}
           </button>
         </form>
 
         {mode !== "reset" && (
-          <button
-            type="button"
-            className={styles.googleButton}
-            onClick={handleGoogle}
-            disabled={loading}
-            aria-label="Iniciar sesión con Google"
-          >
-            <img
-              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              alt=""
-              className={styles.googleIcon}
-            />
-            Continuar con Google
-          </button>
+          <>
+            <div className="login-divider">o continúa con</div>
+            <button
+              type="button"
+              className="login-google-button"
+              onClick={handleGoogle}
+              disabled={loading}
+              aria-label="Iniciar sesión con Google"
+            >
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt=""
+                className="login-google-icon"
+              />
+              Google
+            </button>
+          </>
         )}
 
-        <div className={styles.options}>
+        <div className="login-options">
           {mode === "login" && (
             <>
               <button
                 type="button"
-                className={styles.linkButton}
+                className="login-link"
                 onClick={() => switchMode("reset")}
               >
                 ¿Olvidaste tu contraseña?
               </button>
-              <div className={styles.smallText}>
+              <div className="login-small-text">
                 ¿No tienes cuenta?{" "}
                 <button
                   type="button"
-                  className={styles.linkButton}
+                  className="login-link"
                   onClick={() => switchMode("register")}
                 >
-                  Regístrate
+                  Regístrate aquí
                 </button>
               </div>
             </>
           )}
           {mode === "register" && (
-            <button
-              type="button"
-              className={styles.linkButton}
-              onClick={() => switchMode("login")}
-            >
-              ¿Ya tienes cuenta? Inicia sesión
-            </button>
+            <div className="login-small-text">
+              ¿Ya tienes cuenta?{" "}
+              <button
+                type="button"
+                className="login-link"
+                onClick={() => switchMode("login")}
+              >
+                Inicia sesión
+              </button>
+            </div>
           )}
           {mode === "reset" && (
             <button
               type="button"
-              className={styles.linkButton}
+              className="login-link"
               onClick={() => switchMode("login")}
             >
-              Volver al inicio de sesión
+              ← Volver al inicio de sesión
             </button>
           )}
         </div>
 
-        <footer className={styles.footer}>
+        <footer className="login-footer">
           <a href="#" target="_blank" rel="noopener noreferrer">
-            Términos
+            Términos de Servicio
           </a>
           {" "}·{" "}
           <a href="#" target="_blank" rel="noopener noreferrer">
@@ -276,8 +360,8 @@ const Login = () => {
         </footer>
 
         {loading && (
-          <div className={styles.loaderOverlay}>
-            <div className={styles.loader} />
+          <div className="login-loader-overlay">
+            <div className="login-loader"></div>
           </div>
         )}
       </div>
