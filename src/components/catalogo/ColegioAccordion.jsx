@@ -1,27 +1,44 @@
 import React from "react";
+import ProductoAccordion from "./ProductoAccordion.jsx";
 
-export default function ColegioAccordion({ colegio, abierto, onToggle, productosCount, children, onAdd }) {
+export default function ColegioAccordion({ colegioObj, isExpanded, onToggle, expandedProducts, onProductToggle, onEdit, onDelete, onDownload, onAddSize }) {
+  const totalProducts = colegioObj.productos.length;
+  const panelId = `colegio-${colegioObj.colegio.replace(/\s/g, '-')}`;
+
   return (
-    <section className="accordion card">
-      <header
-        className="accordion-header header-blue"
+    <div className="colegio-accordion">
+      <div
+        className="colegio-header"
         role="button"
-        aria-expanded={abierto}
+        tabIndex={0}
         onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
       >
-        <div className="accordion-title">
-          <span className="caret" aria-hidden>{abierto ? "▾" : "▸"}</span>
-          <span className="title-text">{colegio}</span>
-          <span className="badge badge-light">{productosCount} productos</span>
+        <h2 className="colegio-title">
+          <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}>▼</span>
+          {colegioObj.colegio}
+        </h2>
+        <div className="colegio-info">
+          <span className="product-count">{totalProducts} producto{totalProducts !== 1 ? 's' : ''}</span>
         </div>
-        {onAdd && (
-          <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
-            + Agregar Talla
-          </button>
-        )}
-      </header>
-      {abierto && <div className="accordion-body">{children}</div>}
-    </section>
+      </div>
+      <div className={`colegio-content ${isExpanded ? 'expanded' : ''}`} id={panelId}>
+        {colegioObj.productos.map((prod) => (
+          <ProductoAccordion
+            key={`${colegioObj.colegio}-${prod.prenda}`}
+            colegio={colegioObj.colegio}
+            producto={prod}
+            isExpanded={expandedProducts[prod.prenda] || false}
+            onToggle={() => onProductToggle(prod.prenda)}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onDownload={onDownload}
+            onAddSize={(col, prenda) => onAddSize && onAddSize(col, prenda)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
-

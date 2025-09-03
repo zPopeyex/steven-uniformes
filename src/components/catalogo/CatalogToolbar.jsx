@@ -1,63 +1,48 @@
 import React from "react";
 
-export default function CatalogToolbar({ producto, editandoId, onChange, onSubmit, onCancel }) {
+export default function CatalogToolbar({ producto, handleChange, handleSubmit, editandoId, handleCancelEdit, totalItems }) {
   return (
-    <div className="catalog-header">
-      <h2 className="catalog-title">Catálogo de Productos</h2>
-      <form className="catalog-toolbar" onSubmit={onSubmit}>
+    <div className="catalog-toolbar">
+      <div className="toolbar-header">
+        <h3 className="toolbar-title">
+          <span role="img" aria-label="note">📝</span>
+          {editandoId ? "Editar Producto" : "Agregar Nuevo Producto"}
+        </h3>
+        <div className="toolbar-stats">{totalItems} productos en catálogo</div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="toolbar-form">
         <div className="form-group">
           <label className="form-label">Colegio</label>
-          <input
-            className="form-input"
-            name="colegio"
-            value={producto.colegio}
-            onChange={onChange}
-            placeholder="Colegio"
-            required
-          />
+          <input name="colegio" value={producto.colegio} onChange={handleChange} placeholder="Nombre del colegio" className="form-input" required />
         </div>
         <div className="form-group">
           <label className="form-label">Producto</label>
-          <input
-            className="form-input"
-            name="prenda"
-            value={producto.prenda}
-            onChange={onChange}
-            placeholder="Producto"
-            required
-          />
+          <input name="prenda" value={producto.prenda} onChange={handleChange} placeholder="Nombre del producto" className="form-input" required />
         </div>
         <div className="form-group">
           <label className="form-label">Talla</label>
-          <input
-            className="form-input"
-            name="talla"
-            value={producto.talla}
-            onChange={onChange}
-            placeholder="Talla"
-            required
-          />
+          <input name="talla" value={producto.talla} onChange={handleChange} placeholder="Talla" className="form-input" required />
         </div>
         <div className="form-group">
           <label className="form-label">Precio</label>
-          <input
-            className="form-input"
-            name="precio"
-            type="number"
-            min="0"
-            value={producto.precio}
-            onChange={onChange}
-            placeholder="0"
-            required
-          />
+          <input name="precio" value={producto.precio} onChange={handleChange} placeholder="0" type="number" min="0" step="500" className="form-input" required />
         </div>
-        <div className="toolbar-actions">
-          <button className={`btn ${editandoId ? "btn-success" : "btn-primary"}`} type="submit">
-            {editandoId ? "Actualizar" : "Agregar"}
+        <div className="form-group add-btn-group">
+          <button type="submit" className={`add-btn ${editandoId ? "editing" : ""}`}>
+            {editandoId ? (
+              <>
+                <span role="img" aria-label="save">💾</span> Actualizar
+              </>
+            ) : (
+              <>
+                <span role="img" aria-label="plus">➕</span> Agregar
+              </>
+            )}
           </button>
           {editandoId && (
-            <button className="btn btn-danger" type="button" onClick={onCancel}>
-              Cancelar
+            <button type="button" onClick={handleCancelEdit} className="cancel-btn">
+              <span aria-hidden>✕</span> Cancelar
             </button>
           )}
         </div>
