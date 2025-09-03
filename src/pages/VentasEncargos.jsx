@@ -19,68 +19,53 @@ import VentasTable from "../components/VentasTable";
 import EncargosTable from "../components/EncargosTable";
 import Escaner from "../components/Escaner";
 import { useAuth } from "../context/AuthContext.jsx";
+import "../styles/modern-ui.css";
+// ⬇️ ADD: imports de UI moderna
+// import VentasFormModern from "../components/modern/VentasFormModern"; // reexportado por components/VentasForm
+import VentasTableModern from "../components/VentasTable.modern";
+import EncargosTableModern from "../components/EncargosTable.modern"; // reexport desde modern
 
 const VentasEncargos = () => {
   const [ventas, setVentas] = useState([]);
-  const [encargos, setEncargos] = useState([]); // (se mantiene por compat)
   const [mostrarEscaner, setMostrarEscaner] = useState(false);
   const [productoEscaneado, setProductoEscaneado] = useState(null);
   const [tabActiva, setTabActiva] = useState("ventas");
   const [totalVentas, setTotalVentas] = useState(0);
   const { role } = useAuth();
+  // ⬇️ ADD: feature flag (puedes apagarla si algo no te gusta)
+  const USE_MODERN_UI = true;
 
-  // Cargar ventas y encargos al iniciar (encargos aquí se mantiene, pero el tab usa la suscripción en vivo)
+  // Cargar ventas iniciales (histórico)
   const cargarDatos = async () => {
     try {
-      const [ventasSnap, encargosSnap] = await Promise.all([
-        getDocs(query(collection(db, "ventas"), orderBy("fechaHora", "desc"))),
-        getDocs(query(collection(db, "encargos"), orderBy("fecha", "desc"))),
-      ]);
-
-      setVentas(ventasSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      setEncargos(
-        encargosSnap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((encargo) => encargo.numeroFactura)
+      const ventasSnap = await getDocs(
+        query(collection(db, "ventas"), orderBy("fechaHora", "desc"))
       );
+      setVentas(ventasSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error cargando datos:", error);
       alert("Error cargando datos. Por favor recarga la página.");
     }
   };
-
   useEffect(() => {
     cargarDatos();
   }, []);
-
   useEffect(() => {
     setTotalVentas(ventas.reduce((sum, v) => sum + v.precio * v.cantidad, 0));
   }, [ventas]);
 
-  // Escanear QR
+  // Escáner
   const handleQRDetectado = (codigo) => {
-    const partes = codigo.split("-");
-    const [colegio, prenda, talla, precio] = partes;
+    const [colegio, prenda, talla, precio] = codigo.split("-");
     if (colegio && prenda && talla && precio) {
-      setProductoEscaneado({
-        colegio,
-        prenda,
-        talla,
-        precio,
-      });
+      setProductoEscaneado({ colegio, prenda, talla, precio });
       setMostrarEscaner(false);
     }
   };
 
-  // === Resumen de Encargos en tiempo real (lee colección 'encargos', compat viejo/nuevo) ===
+  // Encargos en vivo (compat viejo/nuevo)
   const [encargosResumen, setEncargosResumen] = useState([]);
-  const [filtrosEnc, setFiltrosEnc] = useState({
-    estado: "todos",
-    buscar: "",
-  });
-
   useEffect(() => {
-    // sin orderBy para no excluir antiguos sin createdAt; ordenamos en memoria
     const unsub = onSnapshot(collection(db, "encargos"), (snap) => {
       const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       rows.sort((a, b) => {
@@ -96,64 +81,55 @@ const VentasEncargos = () => {
   }, []);
 
   // ====== VENTAS ======
-
-  // Registrar venta y actualizar stock (tu lógica original, la envolvemos para número corto)
   const handleAgregarVenta = async (itemsCarrito) => {
     try {
       const items = Array.isArray(itemsCarrito) ? itemsCarrito : [itemsCarrito];
 
-      const itemsInvalidos = items.filter(
-        (item) =>
-          !item.colegio?.trim() ||
-          !item.prenda?.trim() ||
-          !item.talla?.trim() ||
-          isNaN(item.precio) ||
-          item.precio <= 0 ||
-          isNaN(item.cantidad) ||
-          item.cantidad <= 0
+      const invalidos = items.filter(
+        (it) =>
+          !it.colegio?.trim() ||
+          !it.prenda?.trim() ||
+          !it.talla?.trim() ||
+          isNaN(it.precio) ||
+          it.precio <= 0 ||
+          isNaN(it.cantidad) ||
+          it.cantidad <= 0
       );
-
-      if (itemsInvalidos.length > 0) {
-        throw new Error(
-          `${itemsInvalidos.length} producto(s) no tienen todos los campos requeridos o valores inválidos`
-        );
+      if (invalidos.length > 0) {
+        throw new Error(`${invalidos.length} producto(s) inválidos`);
       }
 
       const numeroFactura = `FAC-${Date.now()}`;
       const fechaHora = serverTimestamp();
-
-      const batch = items.map((item) => ({
-        ...item,
+      const batch = items.map((it) => ({
+        ...it,
         numeroFactura,
         fechaHora,
-        abono: item.estado === "separado" ? Number(item.abono) || 0 : 0,
-        saldo: item.estado === "separado" ? Number(item.saldo) || 0 : 0,
-        cliente: item.cliente || "",
-        precio: Number(item.precio),
-        cantidad: Number(item.cantidad),
+        abono: it.estado === "separado" ? Number(it.abono) || 0 : 0,
+        saldo: it.estado === "separado" ? Number(it.saldo) || 0 : 0,
+        cliente: it.cliente || "",
+        precio: Number(it.precio),
+        cantidad: Number(it.cantidad),
       }));
 
       await Promise.all(
-        batch.map((item) => addDoc(collection(db, "ventas"), item))
+        batch.map((it) => addDoc(collection(db, "ventas"), it))
       );
 
-      const ventasNormales = items.filter((item) => item.estado === "venta");
-      if (ventasNormales.length > 0) {
-        await actualizarStock(ventasNormales);
-      }
+      const ventasNormales = items.filter((it) => it.estado === "venta");
+      if (ventasNormales.length > 0) await actualizarStock(ventasNormales);
 
       cargarDatos();
       return true;
-    } catch (error) {
-      console.error("Error al registrar venta:", error);
-      alert(`Error al registrar venta: ${error.message}`);
+    } catch (e) {
+      console.error("Error al registrar venta:", e);
+      alert(`Error al registrar venta: ${e.message}`);
       return false;
     }
   };
 
-  // Consecutivo único, con padding, para VENTAS (wrapper)
+  // Consecutivo corto para Ventas
   const guardarVentaConConsecutivo = async (items, onAgregar) => {
-    // 1) consecutivo
     const r = await runTransaction(db, async (tx) => {
       const ref = doc(db, "parametros", "facturacionVentas");
       const snap = await tx.get(ref);
@@ -168,30 +144,24 @@ const VentasEncargos = () => {
         },
         { merge: true }
       );
-      return current; // el que usará esta venta
+      return current;
     });
     const numeroCorto = String(r).padStart(4, "0");
-
-    // 2) añadimos numeroCorto a cada ítem y delegamos en tu "handleAgregarVenta"
     const conNumero = (Array.isArray(items) ? items : [items]).map((it) => ({
       ...it,
       numeroCorto,
       numeroPrevio: it.numeroFactura || null,
     }));
-
     return onAgregar(conNumero);
   };
 
   // ====== ENCARGOS ======
-
-  // === contador transaccional para código corto ENC-0001 ===
   async function getNextEncargoCode() {
     const ref = doc(db, "counters", "encargos");
     const { code, seq } = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       const prefix = snap.exists() ? snap.data().prefix || "ENC-" : "ENC-";
       const pad = snap.exists() ? snap.data().pad || 4 : 4;
-
       let next = 1;
       if (!snap.exists()) {
         tx.set(ref, { next: 1, prefix, pad, updatedAt: serverTimestamp() });
@@ -205,7 +175,6 @@ const VentasEncargos = () => {
     return { codigoCorto: code, seq, year: new Date().getFullYear() };
   }
 
-  // Normalizador de items (acepta viejo: productos[] / nuevo: items[])
   function normalizeItems(raw) {
     const list = Array.isArray(raw) ? raw : [];
     return list.map((p) => {
@@ -223,14 +192,11 @@ const VentasEncargos = () => {
     });
   }
 
-  // Guardar encargo (nuevo esquema + compat)
   const handleAgregarEncargo = async (encargo) => {
     try {
-      // 1) cliente
       const clienteResumen = encargo.clienteResumen || encargo.cliente || null;
       const clienteId = encargo.clienteId || null;
 
-      // 2) items y totales
       const items = normalizeItems(encargo.items || encargo.productos || []);
       if (!items.length) throw new Error("Faltan productos para el encargo");
 
@@ -243,10 +209,8 @@ const VentasEncargos = () => {
           ? Number(encargo.saldo)
           : Math.max(total - abono, 0);
 
-      // 3) consecutivo corto
       const { codigoCorto, seq, year } = await getNextEncargoCode();
 
-      // 4) payload nuevo (dejamos numeroFactura = codigoCorto por compat)
       const payload = {
         codigoCorto,
         secuencia: seq,
@@ -262,9 +226,7 @@ const VentasEncargos = () => {
         observaciones: encargo.observaciones || "",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-
-        // compat con data antigua
-        numeroFactura: codigoCorto,
+        numeroFactura: codigoCorto, // compat
       };
 
       await addDoc(collection(db, "encargos"), payload);
@@ -276,7 +238,6 @@ const VentasEncargos = () => {
     }
   };
 
-  // Actualizar stock
   const actualizarStock = async (items) => {
     const updates = items.map(async (item) => {
       const q = query(
@@ -285,7 +246,6 @@ const VentasEncargos = () => {
         where("prenda", "==", item.prenda),
         where("talla", "==", item.talla)
       );
-
       const snap = await getDocs(q);
       if (!snap.empty) {
         const stockDoc = snap.docs[0];
@@ -294,11 +254,9 @@ const VentasEncargos = () => {
         });
       }
     });
-
     await Promise.all(updates);
   };
 
-  // Actualizar estado (venta/encargo)
   const handleActualizarEstado = async (id, nuevoEstado, coleccion) => {
     try {
       const docRef = doc(db, coleccion, id);
@@ -306,12 +264,10 @@ const VentasEncargos = () => {
 
       if (nuevoEstado === "venta" && coleccion === "ventas") {
         const ventaDoc = await getDoc(docRef);
-        if (ventaDoc.exists()) {
-          await actualizarStock([ventaDoc.data()]);
-        }
+        if (ventaDoc.exists()) await actualizarStock([ventaDoc.data()]);
       }
-
-      cargarDatos();
+      // refresco simple
+      if (coleccion === "ventas") cargarDatos();
     } catch (error) {
       console.error("Error al actualizar estado:", error);
     }
@@ -328,7 +284,7 @@ const VentasEncargos = () => {
           onClick={() => setMostrarEscaner(!mostrarEscaner)}
           className="btn-qr"
           aria-label={
-            mostrarEscaner ? "Cerrar escáner" : "  Escanear código de barras"
+            mostrarEscaner ? "Cerrar escáner" : "Escanear código de barras"
           }
         >
           <i className="fa-solid fa-qrcode" />
@@ -357,34 +313,66 @@ const VentasEncargos = () => {
         </button>
       </div>
 
+      {/* TAB VENTAS */}
       <div id="ventas-tab" role="tabpanel" hidden={tabActiva !== "ventas"}>
-        <VentasForm
-          productoEscaneado={productoEscaneado}
-          onAgregar={(items) =>
-            guardarVentaConConsecutivo(items, handleAgregarVenta)
-          }
-          onAgregarEncargo={handleAgregarEncargo}
-        />
+        {USE_MODERN_UI ? (
+          <VentasForm
+            productoEscaneado={productoEscaneado}
+            onAgregar={(items) =>
+              guardarVentaConConsecutivo(items, handleAgregarVenta)
+            }
+            onAgregarEncargo={handleAgregarEncargo}
+          />
+        ) : (
+          <VentasForm
+            productoEscaneado={productoEscaneado}
+            onAgregar={(items) =>
+              guardarVentaConConsecutivo(items, handleAgregarVenta)
+            }
+            onAgregarEncargo={handleAgregarEncargo}
+          />
+        )}
 
-        <VentasTable
-          ventas={ventas}
-          totalVentas={totalVentas}
-          onActualizarEstado={(id, estado) =>
-            handleActualizarEstado(id, estado, "ventas")
-          }
-          role={role}
-        />
+        {USE_MODERN_UI ? (
+          <VentasTableModern
+            ventas={ventas}
+            totalVentas={totalVentas}
+            onActualizarEstado={(id, estado) =>
+              handleActualizarEstado(id, estado, "ventas")
+            }
+            role={role}
+          />
+        ) : (
+          <VentasTable
+            ventas={ventas}
+            totalVentas={totalVentas}
+            onActualizarEstado={(id, estado) =>
+              handleActualizarEstado(id, estado, "ventas")
+            }
+            role={role}
+          />
+        )}
       </div>
 
+      {/* TAB ENCARGOS */}
       <div id="encargos-tab" role="tabpanel" hidden={tabActiva !== "encargos"}>
-        <EncargosTable
-          // usamos la suscripción en vivo (compat viejo/nuevo)
-          encargos={encargosResumen}
-          onActualizarEstado={(id, estado) =>
-            handleActualizarEstado(id, estado, "encargos")
-          }
-          role={role}
-        />
+        {USE_MODERN_UI ? (
+          <EncargosTableModern
+            encargos={encargosResumen}
+            onActualizarEstado={(id, estado) =>
+              handleActualizarEstado(id, estado, "encargos")
+            }
+            role={role}
+          />
+        ) : (
+          <EncargosTable
+            encargos={encargosResumen}
+            onActualizarEstado={(id, estado) =>
+              handleActualizarEstado(id, estado, "encargos")
+            }
+            role={role}
+          />
+        )}
       </div>
     </div>
   );

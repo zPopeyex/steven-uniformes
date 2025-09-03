@@ -1,4 +1,5 @@
 import React from "react";
+import "../../styles/modern-ui.css";
 
 export default function InvoicePreview({ template, data }) {
   // 👇 helpers arriba del render (o en el componente)
@@ -14,7 +15,37 @@ export default function InvoicePreview({ template, data }) {
     phoneWa: "573172841355", // formato internacional para WhatsApp (Colombia: 57)
   };
   const numero = data.numeroCorto || data.numero || data.id;
-  const items = Array.isArray(data.items) ? data.items : [];
+
+  // Normaliza items tolerando varias formas y preserva estado de entrega
+  const normalizeItems = (encargo) => {
+    const raw = Array.isArray(encargo?.items)
+      ? encargo.items
+      : Array.isArray(encargo?.productos)
+      ? encargo.productos
+      : Array.isArray(encargo?.carrito)
+      ? encargo.carrito
+      : [];
+
+    return raw.map((p) => {
+      const producto = p.producto ?? p.prenda ?? "-";
+      const talla = p.talla ?? "-";
+      const cantidad = Number(p.cantidad ?? 0);
+      const vrUnitario = Number(p.vrUnitario ?? p.precio ?? 0);
+      const vrTotal = Number(p.vrTotal ?? p.total ?? cantidad * vrUnitario);
+      const colegio = p.plantel ?? p.colegio ?? "-";
+      const entregado =
+        p.entregado === true ||
+        p.estadoEntrega === "entregado" ||
+        p.delivery === true;
+      return { producto, talla, cantidad, vrUnitario, vrTotal, colegio, entregado };
+    });
+  };
+
+  const items = normalizeItems(data);
+  const tipoLower = String(data?.tipo || "").toLowerCase();
+  const headerLower = String(template?.headerText || "").toLowerCase();
+  const isPedido = tipoLower === "pedidos" || headerLower.includes("pedido");
+  const showItemsEstado = !isPedido; // ocultar columna Estado para pedidos
   return (
     <div className="invoice-preview">
       <div
@@ -83,6 +114,26 @@ export default function InvoicePreview({ template, data }) {
             <strong>Fecha:</strong>{" "}
             {new Date(data.createdAt || Date.now()).toLocaleDateString("es-CO")}
           </p>
+          {data?.estado && (
+            <p style={{ marginTop: 6 }}>
+              <strong>Estado: </strong>
+              <span
+                className={
+                  (
+                    {
+                      entregado: "badge badge-delivered",
+                      completado: "badge badge-delivered",
+                      pagado: "badge badge-paid",
+                      cancelado: "badge badge-cancelled",
+                      pendiente: "badge badge-pending",
+                    }[String(data.estado).toLowerCase()] || "badge badge-pending"
+                  )
+                }
+              >
+                {String(data.estado).charAt(0).toUpperCase() + String(data.estado).slice(1)}
+              </span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -110,7 +161,7 @@ export default function InvoicePreview({ template, data }) {
         </div>
       )}
 
-      <table className="invoice-table" style={{ marginTop: 30 }}>
+      <table className="invoice-table" style={{ marginTop: 30, width: "100%" }}>
         <thead>
           <tr>
             <th>Producto</th>
@@ -119,17 +170,25 @@ export default function InvoicePreview({ template, data }) {
             <th>Cantidad</th>
             <th>Vr. Unitario</th>
             <th>Vr. Total</th>
+            {showItemsEstado && <th>Estado</th>}
           </tr>
         </thead>
         <tbody>
-          {data.items?.map((item, i) => (
+          {items.map((item, i) => (
             <tr key={i}>
               <td>{item.producto}</td>
-              <td>{item.plantel}</td>
+              <td>{item.colegio ?? item.plantel}</td>
               <td>{item.talla}</td>
               <td>{item.cantidad}</td>
-              <td>${item.vrUnitario?.toLocaleString()}</td>
-              <td>${item.vrTotal?.toLocaleString()}</td>
+              <td>${item.vrUnitario?.toLocaleString("es-CO")}</td>
+              <td>${item.vrTotal?.toLocaleString("es-CO")}</td>
+              {showItemsEstado && (
+                <td>
+                  <span className={`delivery-badge ${item.entregado ? "delivered" : "pending"}`}>
+                    {item.entregado ? "Entregado" : "Pendiente"}
+                  </span>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
