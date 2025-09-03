@@ -21,9 +21,9 @@ import Escaner from "../components/Escaner";
 import { useAuth } from "../context/AuthContext.jsx";
 import "../styles/modern-ui.css";
 // ⬇️ ADD: imports de UI moderna
-import VentasFormModern from "../components/modern/VentasFormModern";
-import VentasTableModern from "../components/modern/VentasTableModern";
-import EncargosTableModern from "../components/modern/EncargosTableModern"; // si aún no lo tienes, créalo/pega el que probamos
+// import VentasFormModern from "../components/modern/VentasFormModern"; // reexportado por components/VentasForm
+import VentasTableModern from "../components/VentasTable.modern";
+import EncargosTableModern from "../components/EncargosTable.modern"; // reexport desde modern
 
 const VentasEncargos = () => {
   const [ventas, setVentas] = useState([]);
@@ -316,7 +316,7 @@ const VentasEncargos = () => {
       {/* TAB VENTAS */}
       <div id="ventas-tab" role="tabpanel" hidden={tabActiva !== "ventas"}>
         {USE_MODERN_UI ? (
-          <VentasFormModern
+          <VentasForm
             productoEscaneado={productoEscaneado}
             onAgregar={(items) =>
               guardarVentaConConsecutivo(items, handleAgregarVenta)

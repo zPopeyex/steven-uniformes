@@ -11,20 +11,43 @@ import {
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db, GoogleAuthProvider } from "../firebase/firebaseConfig";
 
-// ---- Permisos base por rol (ACTUALIZADO CON MODISTAS) ----
+// ---- Permisos base por rol (actualizado para todas las páginas) ----
+const ALL_PERM_KEYS = [
+  "inventario",
+  "stock",
+  "ventas",
+  "catalogo",
+  "modistas",
+  "reportes_modistas",
+  "usuarios",
+  "proveedores",
+  "gastos",
+  "clientes_pedidos",
+];
+
 const DEFAULT_PERMISSIONS = {
-  Admin: [
-    "inventario",
-    "stock",
-    "ventas",
-    "catalogo",
-    "usuarios",
-    "modistas",
-    "reportes",
-  ],
+  Admin: [...ALL_PERM_KEYS],
   Vendedor: ["ventas"],
   Usuario: [],
 };
+
+const emptyPermisos = () =>
+  ALL_PERM_KEYS.reduce((acc, k) => {
+    acc[k] = false;
+    return acc;
+  }, {});
+
+const arrayToPermisos = (arr = []) => {
+  const p = emptyPermisos();
+  (arr || []).forEach((key) => {
+    const normalized = key === "reportes" ? "reportes_modistas" : key;
+    if (normalized in p) p[normalized] = true;
+  });
+  return p;
+};
+
+const permisosToArray = (permisosObj = {}) =>
+  ALL_PERM_KEYS.filter((k) => !!permisosObj[k]);
 
 const normalizeRole = (role) => {
   if (!role) return null;
@@ -45,7 +68,8 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [permissions, setPermissions] = useState([]);
+  const [permissions, setPermissions] = useState([]); // array (legacy/back-compat)
+  const [permisos, setPermisos] = useState({}); // objeto booleano por página
   const [name, setName] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,32 +86,34 @@ export const AuthProvider = ({ children }) => {
             const data = snap.exists() ? snap.data() : {};
             let userRole = normalizeRole(data.role);
             let userPermissions = data.permissions;
+            let userPermisos = data.permisos;
             const userName =
               data.name || data.nickname || currentUser.displayName || "";
 
             // Asigna permisos si es Admin o faltan permisos
+            // Build permisos object
             if (userRole === "Admin") {
+              userPermisos = ALL_PERM_KEYS.reduce((acc, k) => ({ ...acc, [k]: true }), {});
               userPermissions = DEFAULT_PERMISSIONS.Admin;
-              if (
-                !data.permissions ||
-                data.permissions.length !== DEFAULT_PERMISSIONS.Admin.length
-              ) {
-                await setDoc(
-                  userRef,
-                  { role: userRole, permissions: userPermissions },
-                  { merge: true }
-                );
+            } else {
+              if (!userPermisos) {
+                userPermisos = arrayToPermisos(userPermissions || getDefaultPermissions(userRole));
+              } else {
+                // ensure all keys present
+                userPermisos = { ...emptyPermisos(), ...userPermisos };
               }
-            } else if (!userPermissions || userPermissions.length === 0) {
-              userPermissions = getDefaultPermissions(userRole);
-              await setDoc(
-                userRef,
-                { role: userRole, permissions: userPermissions },
-                { merge: true }
-              );
+              userPermissions = permisosToArray(userPermisos);
             }
 
+            // Persist migration if needed
+            await setDoc(
+              userRef,
+              { role: userRole, permissions: userPermissions, permisos: userPermisos },
+              { merge: true }
+            );
+
             setRole(userRole);
+            setPermisos(userPermisos);
             setPermissions(userPermissions);
             setName(userName);
           } catch (error) {
@@ -98,6 +124,7 @@ export const AuthProvider = ({ children }) => {
               const fallbackRole = "Usuario";
               const defaultPerms = getDefaultPermissions(fallbackRole);
               setRole(fallbackRole);
+              setPermisos(arrayToPermisos(defaultPerms));
               setPermissions(defaultPerms);
               setName(currentUser?.displayName || "");
               try {
@@ -106,6 +133,7 @@ export const AuthProvider = ({ children }) => {
                   {
                     role: fallbackRole,
                     permissions: defaultPerms,
+                    permisos: arrayToPermisos(defaultPerms),
                     name: currentUser?.displayName || "",
                     email: currentUser?.email || "",
                   },
@@ -147,45 +175,45 @@ export const AuthProvider = ({ children }) => {
     let userRole = snap.exists() ? normalizeRole(snap.data().role) : "Vendedor";
     userRole = userRole || "Vendedor";
     let userPermissions = snap.exists() ? snap.data().permissions : undefined;
+    let userPermisos = snap.exists() ? snap.data().permisos : undefined;
     let userName = snap.exists()
       ? snap.data().name || snap.data().nickname
       : result.user.displayName;
 
     if (userRole === "Admin") {
+      userPermisos = ALL_PERM_KEYS.reduce((acc, k) => ({ ...acc, [k]: true }), {});
       userPermissions = DEFAULT_PERMISSIONS.Admin;
-      if (
-        !snap.exists() ||
-        !snap.data().permissions ||
-        snap.data().permissions.length !== DEFAULT_PERMISSIONS.Admin.length
-      ) {
-        await setDoc(
-          userRef,
-          { role: userRole, permissions: userPermissions },
-          { merge: true }
-        );
-      }
+      await setDoc(
+        userRef,
+        { role: userRole, permissions: userPermissions, permisos: userPermisos },
+        { merge: true }
+      );
     } else if (!snap.exists()) {
       userPermissions = getDefaultPermissions(userRole);
+      userPermisos = arrayToPermisos(userPermissions);
       await setDoc(
         userRef,
         {
           role: userRole,
           permissions: userPermissions,
+          permisos: userPermisos,
           name: userName || "",
           email: result.user.email,
         },
         { merge: true }
       );
-    } else if (!userPermissions || userPermissions.length === 0) {
-      userPermissions = getDefaultPermissions(userRole);
-      await setDoc(userRef, { permissions: userPermissions }, { merge: true });
+    } else if (!userPermisos) {
+      userPermissions = userPermissions || getDefaultPermissions(userRole);
+      userPermisos = arrayToPermisos(userPermissions);
+      await setDoc(userRef, { permissions: userPermissions, permisos: userPermisos }, { merge: true });
     } else if (!userName && result.user.displayName) {
       userName = result.user.displayName;
       await setDoc(userRef, { name: userName }, { merge: true });
     }
 
     setRole(userRole);
-    setPermissions(userPermissions);
+    setPermisos(userPermisos || arrayToPermisos(userPermissions));
+    setPermissions(userPermissions || permisosToArray(userPermisos));
     await setDoc(
       userRef,
       { name: userName || "", email: result.user.email },
@@ -234,7 +262,8 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         role,
-        permissions,
+        permissions, // legacy (array)
+        permisos, // objeto de permisos por página
         loading,
         login,
         loginWithGoogle,

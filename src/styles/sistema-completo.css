@@ -95,6 +95,33 @@
     .btn-sm {
         padding: 6px 12px;
         font-size: 13px;
+        min-height: 32px;
+        height: 32px; /* altura uniforme para icon-only */
+    }
+
+    /* Asegura consistencia vertical y altura en botones */
+    .btn {
+        line-height: 1;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn svg, .btn i {
+        vertical-align: middle;
+        width: 16px;
+        height: 16px;
+        display: block; /* evita baseline desalineada */
+    }
+
+    /* Icon-only buttons: tamaño fijo para acciones de tablas */
+    .icon-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
+        padding: 0 !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .form-group {
@@ -145,6 +172,7 @@
     .table td {
         padding: 12px;
         border-bottom: 1px solid var(--border);
+        vertical-align: middle; /* centra contenido y botones */
     }
 
     .table tbody tr:hover {
