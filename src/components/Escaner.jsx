@@ -42,25 +42,41 @@ export default function Escaner(props) {
     onChange ??
     (() => {}); // Fallback no-op si el proyecto inyecta el handler luego
 
-  // Intenta resolver por productos_catalogo.barcode; si no, devuelve el texto tal cual (fallback a QR antiguo)
+  // Resolución del escaneo:
+  // 1) Intentar por productos_catalogo.barcodeShort (nuevo principal)
+  // 2) Si no, intentar por productos_catalogo.barcode (largo legacy)
+  // 3) Si no, devolver el texto tal cual (compat con QR antiguo)
   async function resolveScan(raw) {
     const code = (raw || "").trim();
     if (!code) return code;
 
     try {
-      const q1 = query(
+      // 1) Resolver por barcodeShort
+      const qShort = query(
+        collection(db, "productos_catalogo"),
+        where("barcodeShort", "==", code),
+        limit(1)
+      );
+      const sShort = await getDocs(qShort);
+      if (!sShort.empty) {
+        const d = sShort.docs[0].data();
+        const long = d.barcode || `${d.colegio}-${d.prenda}-${d.talla}-${d.precio}`;
+        return long;
+      }
+
+      // 2) Resolver por barcode largo existente
+      const qLong = query(
         collection(db, "productos_catalogo"),
         where("barcode", "==", code),
         limit(1)
       );
-      const s1 = await getDocs(q1);
-      if (!s1.empty) {
-        const d = s1.docs[0].data();
-        // devolvemos la MISMA cadena que esperan tus forms (colegio-prenda-talla-precio)
+      const sLong = await getDocs(qLong);
+      if (!sLong.empty) {
+        const d = sLong.docs[0].data();
         return d.barcode || code;
       }
 
-      // Fallback: QR antiguo (tus forms ya lo saben resolver)
+      // 3) Fallback: QR/código previo
       return code;
     } catch {
       return code;

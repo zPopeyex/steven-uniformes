@@ -45,15 +45,7 @@ const ReportesModistas = () => {
   useEffect(() => {
     cargarDatos();
 
-    // Configurar fechas por defecto (último mes)
-    const hoy = new Date();
-    const primerDiaDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-
-    setFiltros((prev) => ({
-      ...prev,
-      fechaDesde: primerDiaDelMes.toISOString().split("T")[0],
-      fechaHasta: hoy.toISOString().split("T")[0],
-    }));
+    // Configurar fechas por defecto\n    const hoy = new Date();\n    const fechaInicioFija = new Date(2025, 0, 1);\n\n    setFiltros((prev) => ({\n      ...prev,\n      fechaDesde: fechaInicioFija.toISOString().split("T")[0],\n      fechaHasta: hoy.toISOString().split("T")[0],\n    }));
   }, []);
 
   // Datos filtrados
@@ -752,3 +744,5 @@ const ReportesModistas = () => {
 };
 
 export default ReportesModistas;
+
+

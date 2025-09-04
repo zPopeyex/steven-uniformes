@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
-import { GENERAL_ORDER, PANTALON_ORDER, sizeInRange } from "../utils/sizes";
+import { GENERAL_ORDER, sizeInRange } from "../utils/sizes";
 
 const UI = {
   primary: "#0052CC",
@@ -76,52 +76,10 @@ export default function Proveedores() {
   const [editId, setEditId] = useState(null);
   const [detalleId, setDetalleId] = useState(null);
   const [compras, setCompras] = useState([]);
-  const [detalleTab, setDetalleTab] = useState("compras");
   const [priceRules, setPriceRules] = useState([]);
   const [ruleForm, setRuleForm] = useState({ colegioId: "", productoId: "", tallaDesde: "", tallaHasta: "", precio: "", estado: "activo" });
   const [sortBy, setSortBy] = useState("fechaDesc");
   const [hoverRow, setHoverRow] = useState(null);
-
-  // Catálogo para alimentar selects dependientes (colegio -> producto -> tallas)
-  const [catalogData, setCatalogData] = useState([]);
-  useEffect(() => {
-    (async () => {
-      try {
-        const snap = await getDocs(collection(db, "productos_catalogo"));
-        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setCatalogData(rows);
-      } catch (e) {
-        setCatalogData([]);
-      }
-    })();
-  }, []);
-
-  const colegiosOpts = useMemo(
-    () => [...new Set(catalogData.map((p) => p.colegio))].sort(),
-    [catalogData]
-  );
-  const productosOpts = useMemo(() => {
-    if (!ruleForm.colegioId) return [];
-    return [...new Set(catalogData.filter((p) => p.colegio === ruleForm.colegioId).map((p) => p.prenda))].sort();
-  }, [catalogData, ruleForm.colegioId]);
-  const tallasOpts = useMemo(() => {
-    if (!ruleForm.colegioId || !ruleForm.productoId) return [];
-    const uniq = [
-      ...new Set(
-        catalogData
-          .filter((p) => p.colegio === ruleForm.colegioId && p.prenda === ruleForm.productoId)
-          .map((p) => p.talla)
-          .filter(Boolean)
-      ),
-    ];
-    const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const order = norm(ruleForm.productoId) === "pantalon" ? PANTALON_ORDER : GENERAL_ORDER;
-    return uniq.sort((a, b) => {
-      const ia = order.indexOf(String(a));
-      const ib = order.indexOf(String(b));
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    });
-  }, [catalogData, ruleForm.colegioId, ruleForm.productoId]);
 
   const telasValidas = useMemo(
     () => telas.filter((t) => t.codigo.trim() || t.descripcion.trim()),
@@ -505,7 +463,7 @@ export default function Proveedores() {
       </div>
 
       {/* Detalle de compras */}
-      {detalleId && detalleTab === "compras" && (
+      {detalleId && (
         <div style={{ ...card }}>
           <div
             style={{
@@ -518,14 +476,6 @@ export default function Proveedores() {
             <h3 style={{ margin: 0, color: "#1f2937" }}>
               Histórico de compras
             </h3>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-              <button type="button" onClick={() => setDetalleTab("compras")} style={btn(detalleTab === "compras" ? UI.primary : UI.headerBg, detalleTab === "compras" ? "#fff" : "#1f2937")}>
-                Compras
-              </button>
-              <button type="button" onClick={() => setDetalleTab("rangos")} style={btn(detalleTab === "rangos" ? UI.primary : UI.headerBg, detalleTab === "rangos" ? "#fff" : "#1f2937")}>
-                Prendas (rangos)
-              </button>
-            </div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -537,7 +487,7 @@ export default function Proveedores() {
             </select>
             <button
               type="button"
-              onClick={() => { setDetalleTab("compras"); cargarCompras(detalleId); }}
+              onClick={() => cargarCompras(detalleId)}
               style={btn(UI.green)}
             >
               ↻ Actualizar
@@ -630,72 +580,35 @@ export default function Proveedores() {
       )}
 
       {/* Prendas (rangos) */}
-      {detalleId && detalleTab === "rangos" && (
+      {detalleId && (
         <div style={{ ...card, marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <h3 style={{ margin: 0, color: "#1f2937" }}>Prendas (rangos)</h3>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-              <button type="button" onClick={() => setDetalleTab("compras")} style={btn(detalleTab === "compras" ? UI.primary : UI.headerBg, detalleTab === "compras" ? "#fff" : "#1f2937")}>
-                Compras
-              </button>
-              <button type="button" onClick={() => setDetalleTab("rangos")} style={btn(detalleTab === "rangos" ? UI.primary : UI.headerBg, detalleTab === "rangos" ? "#fff" : "#1f2937")}>
-                Prendas (rangos)
-              </button>
-              <button type="button" onClick={() => cargarReglas(detalleId)} style={btn(UI.green)}>Actualizar</button>
-            </div>
+            <button type="button" onClick={() => cargarReglas(detalleId)} style={btn(UI.green)}>Actualizar</button>
           </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 10 }}>
             <div>
               <label style={label}>Colegio</label>
-              <select
-                style={select}
-                value={ruleForm.colegioId}
-                onChange={(e) => setRuleForm({ ...ruleForm, colegioId: e.target.value, productoId: "", tallaDesde: "", tallaHasta: "" })}
-              >
-                <option value="">Seleccionar…</option>
-                {colegiosOpts.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              <input style={input} value={ruleForm.colegioId} onChange={(e) => setRuleForm({ ...ruleForm, colegioId: e.target.value })} placeholder="Colegio" />
             </div>
             <div>
               <label style={label}>Producto</label>
-              <select
-                style={select}
-                value={ruleForm.productoId}
-                onChange={(e) => setRuleForm({ ...ruleForm, productoId: e.target.value, tallaDesde: "", tallaHasta: "" })}
-                disabled={!ruleForm.colegioId}
-              >
-                <option value="">Seleccionar…</option>
-                {productosOpts.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+              <input style={input} value={ruleForm.productoId} onChange={(e) => setRuleForm({ ...ruleForm, productoId: e.target.value })} placeholder="Producto" />
             </div>
             <div>
               <label style={label}>Talla desde</label>
-              <select
-                style={select}
-                value={ruleForm.tallaDesde}
-                onChange={(e) => setRuleForm({ ...ruleForm, tallaDesde: e.target.value })}
-                disabled={!ruleForm.colegioId || !ruleForm.productoId}
-              >
+              <select style={select} value={ruleForm.tallaDesde} onChange={(e) => setRuleForm({ ...ruleForm, tallaDesde: e.target.value })}>
                 <option value="">-</option>
-                {tallasOpts.map((t) => (
+                {GENERAL_ORDER.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
             </div>
             <div>
               <label style={label}>Talla hasta</label>
-              <select
-                style={select}
-                value={ruleForm.tallaHasta}
-                onChange={(e) => setRuleForm({ ...ruleForm, tallaHasta: e.target.value })}
-                disabled={!ruleForm.colegioId || !ruleForm.productoId}
-              >
+              <select style={select} value={ruleForm.tallaHasta} onChange={(e) => setRuleForm({ ...ruleForm, tallaHasta: e.target.value })}>
                 <option value="">-</option>
-                {tallasOpts.map((t) => (
+                {GENERAL_ORDER.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
@@ -788,5 +701,3 @@ export default function Proveedores() {
     </div>
   );
 }
-
-
