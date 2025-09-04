@@ -41,6 +41,7 @@ import ClientModal from "../components/clients/ClientModal";
 import InvoicePreview from "../components/invoices/InvoicePreview";
 import { limit } from "firebase/firestore";
 import FacturaDetalle from "../components/FacturaDetalle";
+import { openShortInvoiceUrl } from "../lib/shortlinks";
 
 const FaTemplate = FaFileInvoice;
 
@@ -958,35 +959,6 @@ export default function ClientesPedidos() {
     return url;
   };
 
-  /** Intenta acortar con is.gd y si falla usa TinyURL. Si todo falla, retorna la limpia. */
-  const shortenUrl = async (url) => {
-    const target = url; // mantener query de Discord
-
-    const tryShort = async (api) => {
-      const r = await fetch(api);
-      if (!r.ok) throw new Error("shortener failed");
-      const t = (await r.text()).trim();
-      if (/^https?:\/\//i.test(t)) return t;
-      throw new Error("invalid short url");
-    };
-
-    try {
-      return await tryShort(
-        `https://is.gd/create.php?format=simple&url=${encodeURIComponent(
-          target
-        )}`
-      );
-    } catch {
-      try {
-        return await tryShort(
-          `https://tinyurl.com/api-create.php?url=${encodeURIComponent(target)}`
-        );
-      } catch {
-        return target; // fallback: sin acortar pero funcional
-      }
-    }
-  };
-
   /** Deduce género del cliente: f/m/null */
   const getClienteGenero = (cli) => {
     const g = (cli?.genero || cli?.sexo || "").toLowerCase();
@@ -1216,8 +1188,7 @@ export default function ClientesPedidos() {
       const blob = await buildInvoicePdfBlob(data, tipo);
       const fileUrl = await uploadPdfToDiscord(blob, `Pedido_${numero}.pdf`);
 
-      // 1) limpia query de Discord  2) intenta acortar
-      const shortUrl = await shortenUrl(fileUrl);
+      const shortUrl = await openShortInvoiceUrl(fileUrl);
       // 👇 texto YA percent-encodado (emojis en crudo)
       const textEncoded = buildWaTextEncoded({ data, shortUrl });
       const waUrl = `${base}&text=${textEncoded}`;
