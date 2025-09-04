@@ -748,7 +748,7 @@
 .modern-ventas-form .form-header { padding: 14px 16px; background: linear-gradient(135deg, var(--primary), #0040a3); color: #fff; }
 .modern-ventas-form .form-header h3 { margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 10px; }
 .modern-ventas-form .form-content { padding: 16px; display: grid; gap: 12px; }
-.modern-ventas-form .form-row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+.modern-ventas-form .form-row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; align-items: start; }
 .modern-ventas-form .form-group { display: grid; gap: 6px; grid-column: span 12; }
 .modern-ventas-form .form-group.sm { grid-column: span 3; }
 .modern-ventas-form .form-group.md { grid-column: span 4; }
@@ -759,8 +759,8 @@
 .modern-ventas-form .form-input,
 .modern-ventas-form .form-select { height: 36px; padding: 6px 10px; border: 1px solid var(--gray-300); border-radius: 8px; background: #fff; color: #111827; outline: none; }
 .modern-ventas-form .form-input.readonly { background: var(--gray-50); color: var(--gray-700); }
-.modern-ventas-form .cantidad-input { display: flex; align-items: center; gap: 8px; }
-.modern-ventas-form .stock-info { font-size: 12px; color: var(--gray-600); }
+.modern-ventas-form .cantidad-input { display: flex; align-items: flex-start; gap: 8px; }
+.modern-ventas-form .stock-info { font-size: 12px; color: var(--gray-600); white-space: nowrap; line-height: 1; }
 .modern-ventas-form .form-actions { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--gray-200); justify-content: flex-end; }
 
 /* Buttons */

@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
+import { GENERAL_ORDER, PANTALON_ORDER, sizeInRange } from "../utils/sizes";
 
 const UI = {
   primary: "#0052CC",
@@ -75,8 +76,52 @@ export default function Proveedores() {
   const [editId, setEditId] = useState(null);
   const [detalleId, setDetalleId] = useState(null);
   const [compras, setCompras] = useState([]);
+  const [detalleTab, setDetalleTab] = useState("compras");
+  const [priceRules, setPriceRules] = useState([]);
+  const [ruleForm, setRuleForm] = useState({ colegioId: "", productoId: "", tallaDesde: "", tallaHasta: "", precio: "", estado: "activo" });
   const [sortBy, setSortBy] = useState("fechaDesc");
   const [hoverRow, setHoverRow] = useState(null);
+
+  // Catálogo para alimentar selects dependientes (colegio -> producto -> tallas)
+  const [catalogData, setCatalogData] = useState([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDocs(collection(db, "productos_catalogo"));
+        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setCatalogData(rows);
+      } catch (e) {
+        setCatalogData([]);
+      }
+    })();
+  }, []);
+
+  const colegiosOpts = useMemo(
+    () => [...new Set(catalogData.map((p) => p.colegio))].sort(),
+    [catalogData]
+  );
+  const productosOpts = useMemo(() => {
+    if (!ruleForm.colegioId) return [];
+    return [...new Set(catalogData.filter((p) => p.colegio === ruleForm.colegioId).map((p) => p.prenda))].sort();
+  }, [catalogData, ruleForm.colegioId]);
+  const tallasOpts = useMemo(() => {
+    if (!ruleForm.colegioId || !ruleForm.productoId) return [];
+    const uniq = [
+      ...new Set(
+        catalogData
+          .filter((p) => p.colegio === ruleForm.colegioId && p.prenda === ruleForm.productoId)
+          .map((p) => p.talla)
+          .filter(Boolean)
+      ),
+    ];
+    const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const order = norm(ruleForm.productoId) === "pantalon" ? PANTALON_ORDER : GENERAL_ORDER;
+    return uniq.sort((a, b) => {
+      const ia = order.indexOf(String(a));
+      const ib = order.indexOf(String(b));
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  }, [catalogData, ruleForm.colegioId, ruleForm.productoId]);
 
   const telasValidas = useMemo(
     () => telas.filter((t) => t.codigo.trim() || t.descripcion.trim()),
@@ -196,6 +241,7 @@ export default function Proveedores() {
   const verDetalle = async (id) => {
     setDetalleId(id);
     await cargarCompras(id);
+    await cargarReglas(id);
   };
 
   const toastOK = (text) => console.log("✅", text);
@@ -216,6 +262,13 @@ export default function Proveedores() {
       );
     return rows;
   }, [compras, sortBy]);
+
+  async function cargarReglas(proveedorId) {
+    if (!proveedorId) return setPriceRules([]);
+    const snap = await getDocs(collection(db, "proveedores", proveedorId, "priceRules"));
+    const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    setPriceRules(rows);
+  }
 
   return (
     <div style={{ padding: 20, fontFamily: "Segoe UI, system-ui, sans-serif" }}>
@@ -452,7 +505,7 @@ export default function Proveedores() {
       </div>
 
       {/* Detalle de compras */}
-      {detalleId && (
+      {detalleId && detalleTab === "compras" && (
         <div style={{ ...card }}>
           <div
             style={{
@@ -465,6 +518,14 @@ export default function Proveedores() {
             <h3 style={{ margin: 0, color: "#1f2937" }}>
               Histórico de compras
             </h3>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setDetalleTab("compras")} style={btn(detalleTab === "compras" ? UI.primary : UI.headerBg, detalleTab === "compras" ? "#fff" : "#1f2937")}>
+                Compras
+              </button>
+              <button type="button" onClick={() => setDetalleTab("rangos")} style={btn(detalleTab === "rangos" ? UI.primary : UI.headerBg, detalleTab === "rangos" ? "#fff" : "#1f2937")}>
+                Prendas (rangos)
+              </button>
+            </div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -476,7 +537,7 @@ export default function Proveedores() {
             </select>
             <button
               type="button"
-              onClick={() => cargarCompras(detalleId)}
+              onClick={() => { setDetalleTab("compras"); cargarCompras(detalleId); }}
               style={btn(UI.green)}
             >
               ↻ Actualizar
@@ -567,6 +628,165 @@ export default function Proveedores() {
           </div>
         </div>
       )}
+
+      {/* Prendas (rangos) */}
+      {detalleId && detalleTab === "rangos" && (
+        <div style={{ ...card, marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <h3 style={{ margin: 0, color: "#1f2937" }}>Prendas (rangos)</h3>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setDetalleTab("compras")} style={btn(detalleTab === "compras" ? UI.primary : UI.headerBg, detalleTab === "compras" ? "#fff" : "#1f2937")}>
+                Compras
+              </button>
+              <button type="button" onClick={() => setDetalleTab("rangos")} style={btn(detalleTab === "rangos" ? UI.primary : UI.headerBg, detalleTab === "rangos" ? "#fff" : "#1f2937")}>
+                Prendas (rangos)
+              </button>
+              <button type="button" onClick={() => cargarReglas(detalleId)} style={btn(UI.green)}>Actualizar</button>
+            </div>
+          </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 10 }}>
+            <div>
+              <label style={label}>Colegio</label>
+              <select
+                style={select}
+                value={ruleForm.colegioId}
+                onChange={(e) => setRuleForm({ ...ruleForm, colegioId: e.target.value, productoId: "", tallaDesde: "", tallaHasta: "" })}
+              >
+                <option value="">Seleccionar…</option>
+                {colegiosOpts.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={label}>Producto</label>
+              <select
+                style={select}
+                value={ruleForm.productoId}
+                onChange={(e) => setRuleForm({ ...ruleForm, productoId: e.target.value, tallaDesde: "", tallaHasta: "" })}
+                disabled={!ruleForm.colegioId}
+              >
+                <option value="">Seleccionar…</option>
+                {productosOpts.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={label}>Talla desde</label>
+              <select
+                style={select}
+                value={ruleForm.tallaDesde}
+                onChange={(e) => setRuleForm({ ...ruleForm, tallaDesde: e.target.value })}
+                disabled={!ruleForm.colegioId || !ruleForm.productoId}
+              >
+                <option value="">-</option>
+                {tallasOpts.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={label}>Talla hasta</label>
+              <select
+                style={select}
+                value={ruleForm.tallaHasta}
+                onChange={(e) => setRuleForm({ ...ruleForm, tallaHasta: e.target.value })}
+                disabled={!ruleForm.colegioId || !ruleForm.productoId}
+              >
+                <option value="">-</option>
+                {tallasOpts.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={label}>Precio unidad</label>
+              <input type="number" style={input} value={ruleForm.precio} onChange={(e) => setRuleForm({ ...ruleForm, precio: e.target.value })} placeholder="0" />
+            </div>
+            <div>
+              <label style={label}>Estado</label>
+              <select style={select} value={ruleForm.estado} onChange={(e) => setRuleForm({ ...ruleForm, estado: e.target.value })}>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button
+              style={btn(UI.green)}
+              onClick={async () => {
+                if (!detalleId) return;
+                const { colegioId, productoId, tallaDesde, tallaHasta, precio, estado } = ruleForm;
+                if (!colegioId || !productoId || !tallaDesde || !tallaHasta || !precio) {
+                  alert("Completa todos los campos de la regla");
+                  return;
+                }
+                const overlap = priceRules.some((r) => (r.colegioId || r.colegio) === colegioId && (r.productoId || r.prenda || r.producto) === productoId && (sizeInRange(tallaDesde, r.tallaDesde, r.tallaHasta) || sizeInRange(tallaHasta, r.tallaDesde, r.tallaHasta)));
+                if (overlap && !confirm("Ya existe una regla que solapa este rango. ¿Continuar?")) return;
+                await addDoc(collection(db, "proveedores", detalleId, "priceRules"), {
+                  colegioId,
+                  productoId,
+                  tallaDesde,
+                  tallaHasta,
+                  precio: Number(precio),
+                  estado,
+                  creadoEn: serverTimestamp(),
+                });
+                setRuleForm({ colegioId: "", productoId: "", tallaDesde: "", tallaHasta: "", precio: "", estado: "activo" });
+                cargarReglas(detalleId);
+              }}
+            >
+              Guardar regla
+            </button>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: UI.headerBg }}>
+                  {["Colegio", "Producto", "Desde", "Hasta", "Precio", "Estado", "Acciones"].map((h, i) => (
+                    <th key={i} style={{ padding: 10, textAlign: "left", color: "#1f3b6c" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {priceRules.map((r) => (
+                  <tr key={r.id} style={{ borderBottom: `1px solid ${UI.border}` }}>
+                    <td style={{ padding: 10 }}>{r.colegioId || r.colegio || ""}</td>
+                    <td style={{ padding: 10 }}>{r.productoId || r.prenda || r.producto || ""}</td>
+                    <td style={{ padding: 10 }}>{r.tallaDesde}</td>
+                    <td style={{ padding: 10 }}>{r.tallaHasta}</td>
+                    <td style={{ padding: 10 }}>{Number(r.precio || 0).toLocaleString()}</td>
+                    <td style={{ padding: 10 }}>{r.estado || "activo"}</td>
+                    <td style={{ padding: 10 }}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button style={btn("#FFC107", "#000")} onClick={async () => {
+                          const nuevo = prompt("Nuevo precio unitario:", String(r.precio || 0));
+                          if (nuevo == null) return;
+                          await updateDoc(doc(db, "proveedores", detalleId, "priceRules", r.id), { precio: Number(nuevo) });
+                          cargarReglas(detalleId);
+                        }}>Editar</button>
+                        <button style={btn("#ef4444")} onClick={async () => {
+                          if (!confirm("¿Eliminar regla?")) return;
+                          await deleteDoc(doc(db, "proveedores", detalleId, "priceRules", r.id));
+                          cargarReglas(detalleId);
+                        }}>Eliminar</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {priceRules.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 14, color: "#6b7280" }}>Sin reglas</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+

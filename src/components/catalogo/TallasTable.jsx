@@ -16,13 +16,17 @@ export default function TallasTable({ colegio, producto, tallas, onEdit, onDelet
         <tbody>
           {tallas.map((t) => {
             const codeValue = `${colegio}-${producto}-${t.talla}-${t.precio}`;
+            const shortValue = t.barcodeShort || codeValue;
             return (
               <tr key={t.id}>
                 <td className="size-cell">{t.talla}</td>
                 <td className="price-cell">${Number(t.precio).toLocaleString('es-CO')}</td>
                 <td className="barcode-cell">
-                  <div className="barcode-preview" data-barcode-id={codeValue}>
-                    <BarcodePreview value={codeValue} height={28} />
+                  <div className="barcode-preview" data-barcode-id={shortValue}>
+                    <BarcodePreview value={shortValue} height={28} />
+                    <button onClick={() => onDownload(codeValue, `barcode_largo_${colegio}_${producto}_${t.talla}`)} className="action-btn download-btn" title="Descargar cA3digo largo (legacy)" aria-label={`Descargar cA3digo largo de ${producto} talla ${t.talla}`} style={{backgroundColor:'#6B7280', color:'#fff'}}>
+                      <span role="img" aria-label="descargar">dY"�</span>Largo
+                    </button>
                   </div>
                 </td>
                 <td className="actions-cell">
@@ -33,7 +37,7 @@ export default function TallasTable({ colegio, producto, tallas, onEdit, onDelet
                     <button onClick={() => onDelete(t.id)} className="action-btn delete-btn" title="Eliminar producto" aria-label={`Eliminar ${producto} talla ${t.talla}`}>
                       <span role="img" aria-label="eliminar">🗑️</span>Eliminar
                     </button>
-                    <button onClick={() => onDownload(codeValue, `barcode_${colegio}_${producto}_${t.talla}`)} className="action-btn download-btn" title="Descargar código de barras" aria-label={`Descargar código de barras de ${producto} talla ${t.talla}`}>
+                    <button onClick={() => onDownload(shortValue, `barcode_${colegio}_${producto}_${t.talla}`)} className="action-btn download-btn" title="Descargar código de barras" aria-label={`Descargar código de barras de ${producto} talla ${t.talla}`}>
                       <span role="img" aria-label="descargar">📥</span>Descargar
                     </button>
                   </div>
