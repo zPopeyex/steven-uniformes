@@ -27,3 +27,6 @@ dist-ssr
 *.sw?
 
 src/firebase.js
+ 
+# Temporary scratch files
+temp_*.txt
