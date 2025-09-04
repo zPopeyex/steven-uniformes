@@ -31,11 +31,8 @@ const VentasFormModern = ({
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [abonoCarrito, setAbonoCarrito] = useState(0);
   const [productosDisponibles, setProductosDisponibles] = useState([]);
-  const [catalogos, setCatalogos] = useState({
-    colegios: [],
-    prendas: [],
-    tallas: [],
-  });
+  // Catálogo completo para filtrar por colegio → prenda → talla
+  const [catalogData, setCatalogData] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [mostrarFormularioEncargo, setMostrarFormularioEncargo] =
     useState(false);
@@ -68,30 +65,7 @@ const VentasFormModern = ({
         stockSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       );
 
-      const catalogData = catalogSnap.docs.map((doc) => doc.data());
-      const ordenTallas = [
-        "6",
-        "8",
-        "10",
-        "12",
-        "14",
-        "16",
-        "S",
-        "M",
-        "L",
-        "XL",
-        "XXL",
-      ];
-      const tallasUnicas = [...new Set(catalogData.map((p) => p.talla))];
-      const tallasOrdenadas = tallasUnicas
-        .sort((a, b) => ordenTallas.indexOf(a) - ordenTallas.indexOf(b))
-        .filter((t) => t);
-
-      setCatalogos({
-        colegios: [...new Set(catalogData.map((p) => p.colegio))].sort(),
-        prendas: [...new Set(catalogData.map((p) => p.prenda))].sort(),
-        tallas: tallasOrdenadas,
-      });
+      setCatalogData(catalogSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     };
     cargarDatos();
   }, []);
@@ -111,17 +85,63 @@ const VentasFormModern = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setVenta((prev) => {
+      // Encadenado: cambiar colegio limpia prenda/talla/precio
+      if (name === "colegio") {
+        return { ...prev, colegio: value, prenda: "", talla: "", precio: "" };
+      }
+      // Cambiar prenda limpia talla/precio
+      if (name === "prenda") {
+        return { ...prev, prenda: value, talla: "", precio: "" };
+      }
       const updated = { ...prev, [name]: value };
       if (name === "abono") {
         const total = (Number(updated.cantidad) || 0) * (Number(updated.precio) || 0);
-        const abono = Number(value || 0); // asegura entero
+        const abono = Number(value || 0);
         const saldo = total - abono;
         return { ...updated, abono, saldo: Math.max(saldo, 0) };
       }
-
       return updated;
     });
   };
+
+  // Opciones filtradas por selección actual
+  const ORDEN_GENERAL = ["6", "8", "10", "12", "14", "16", "S", "M", "L", "XL", "XXL"];
+  const ORDEN_PANTALON = ["6", "8", "10", "12", "14", "16", "28", "30", "32", "34", "36", "38", "40"];
+  const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const colegios = React.useMemo(
+    () => [...new Set(catalogData.map((p) => p.colegio))].sort(),
+    [catalogData]
+  );
+  const prendasFiltradas = React.useMemo(() => {
+    if (!venta.colegio) return [];
+    return [...new Set(catalogData.filter((p) => p.colegio === venta.colegio).map((p) => p.prenda))].sort();
+  }, [catalogData, venta.colegio]);
+  const tallasFiltradas = React.useMemo(() => {
+    if (!venta.colegio || !venta.prenda) return [];
+    const list = catalogData
+      .filter((p) => p.colegio === venta.colegio && p.prenda === venta.prenda)
+      .map((p) => p.talla)
+      .filter(Boolean);
+    const uniq = [...new Set(list)];
+    const order = norm(venta.prenda) === "pantalon" ? ORDEN_PANTALON : ORDEN_GENERAL;
+    return uniq.sort((a, b) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  }, [catalogData, venta.colegio, venta.prenda]);
+
+  // Autollenar precio al elegir talla según catálogo
+  useEffect(() => {
+    if (venta.colegio && venta.prenda && venta.talla) {
+      const item = catalogData.find(
+        (p) => p.colegio === venta.colegio && p.prenda === venta.prenda && p.talla === venta.talla
+      );
+      if (item && item.precio != null && item.precio !== "") {
+        setVenta((prev) => ({ ...prev, precio: item.precio }));
+      }
+    }
+  }, [venta.colegio, venta.prenda, venta.talla, catalogData]);
 
   const handleChangeEncargo = (e) => {
     const { name, value } = e.target;
@@ -474,7 +494,7 @@ const VentasFormModern = ({
                 <option value="" disabled>
                   Seleccionar colegio
                 </option>
-                {catalogos.colegios.map((c, i) => (
+                {colegios.map((c, i) => (
                   <option key={i} value={c}>
                     {c}
                   </option>
@@ -491,9 +511,10 @@ const VentasFormModern = ({
                 onChange={handleChange}
                 required
                 className="form-select"
+                disabled={!venta.colegio}
               >
                 <option value="">Seleccionar producto</option>
-                {catalogos.prendas.map((p, i) => (
+                {prendasFiltradas.map((p, i) => (
                   <option key={i} value={p}>
                     {p}
                   </option>
@@ -510,9 +531,10 @@ const VentasFormModern = ({
                 onChange={handleChange}
                 required
                 className="form-select"
+                disabled={!venta.colegio || !venta.prenda}
               >
                 <option value="">Seleccionar talla</option>
-                {catalogos.tallas.map((t, i) => (
+                {tallasFiltradas.map((t, i) => (
                   <option key={i} value={t}>
                     {t}
                   </option>
@@ -538,13 +560,28 @@ const VentasFormModern = ({
                   Stock: <strong>{stockActual}</strong>
                 </span>
               </div>
-              {(venta.estado === "venta" || venta.estado === "separado") &&
-                violacionActual && (
-                  <div style={{ color: "#c0392b", fontSize: 12, marginTop: 4 }}>
-                    No hay stock suficiente. Disponible: {violacionActual.disponible}
-                    . Cantidad solicitada: {violacionActual.solicitado}.
-                  </div>
-                )}
+              <div style={{ position: "relative", paddingBottom: 18 }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    bottom: 0,
+                    height: 18,
+                    lineHeight: "18px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {(venta.estado === "venta" || venta.estado === "separado") &&
+                    violacionActual && (
+                      <span style={{ color: "#c0392b", fontSize: 12 }}>
+                        No hay stock suficiente. Disponible: {violacionActual.disponible}. Cantidad solicitada: {" "}
+                        {violacionActual.solicitado}.
+                      </span>
+                    )}
+                </div>
+              </div>
             </div>
           </div>
 

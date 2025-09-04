@@ -10,6 +10,7 @@ import {
   where,
   getDoc,
   updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import InventarioForm from "../components/InventarioForm";
@@ -81,10 +82,32 @@ const Inventario = () => {
       return;
     }
     try {
-      await addDoc(collection(db, "inventario"), {
+      const invPayload = {
         ...productoFinal,
-        fechaHora: new Date(), // Guarda fecha y hora exacta de forma legible
-      });
+        fechaHora: serverTimestamp(),
+      };
+      await addDoc(collection(db, "inventario"), invPayload);
+
+      // Si es compra a proveedor, registrar también en compras_telas para que aparezca en /proveedores
+      if (String(productoFinal.origen || "").toLowerCase() === "proveedor") {
+        const unit = Number(productoFinal.costoUnidad || 0);
+        const qty = Number(productoFinal.cantidad || 0);
+        const total = Number(productoFinal.costoTotal || unit * qty || 0);
+        const compra = {
+          proveedorId: productoFinal.proveedorId || "",
+          proveedorNombre: productoFinal.proveedorNombre || "",
+          codigo_tela: `${productoFinal.colegio || ""}-${productoFinal.prenda || ""}-${productoFinal.talla || ""}`,
+          metros: qty, // usamos cantidad como métricas/metros
+          valor_unitario: unit,
+          valor_total: total,
+          fechaHora: serverTimestamp(),
+        };
+        try {
+          await addDoc(collection(db, "compras_telas"), compra);
+        } catch (e) {
+          console.warn("No se pudo registrar la compra en compras_telas:", e);
+        }
+      }
 
       const q = query(
         collection(db, "stock_actual"),

@@ -12,20 +12,10 @@ const StockTable = ({ stock }) => {
 
   const colegiosOrdenados = Object.keys(colegios).sort();
 
-  // Orden tallas
-  const ordenTallas = [
-    "6",
-    "8",
-    "10",
-    "12",
-    "14",
-    "16",
-    "S",
-    "M",
-    "L",
-    "XL",
-    "XXL",
-  ];
+  // Orden de tallas
+  const ordenGeneral = ["6", "8", "10", "12", "14", "16", "S", "M", "L", "XL", "XXL"];
+  const ordenPantalon = ["6", "8", "10", "12", "14", "16", "28", "30", "32", "34", "36", "38", "40"];
+  const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   return (
     <div style={{ marginTop: 20 }}>
@@ -91,8 +81,9 @@ const StockTable = ({ stock }) => {
                     .sort((a, b) => {
                       if (a.prenda !== b.prenda)
                         return a.prenda.localeCompare(b.prenda);
-                      const ia = ordenTallas.indexOf(a.talla);
-                      const ib = ordenTallas.indexOf(b.talla);
+                      const order = norm(a.prenda) === "pantalon" ? ordenPantalon : ordenGeneral;
+                      const ia = order.indexOf(String(a.talla));
+                      const ib = order.indexOf(String(b.talla));
                       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
                     })
                     .map((item, idx) => {
