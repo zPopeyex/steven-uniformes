@@ -1,5 +1,7 @@
 ﻿import React, { useRef, useEffect, useState } from "react";
-import { db } from "../firebase/firebaseConfig";
+import { db } from "../firebase/firebaseConfig";
+import { getNextBarcodeSequence } from "../firebase/counters";
+import { formatShortBarcodeFromSeq } from "../utils/barcode";
 import {
   collection,
   addDoc,
@@ -7,7 +9,8 @@ import {
   deleteDoc,
   updateDoc,
   doc,
-} from "firebase/firestore";
+  getDoc,
+} from "firebase/firestore";
 import QRCode from "react-qr-code"; // <- ya no se usa, lo dejamos para no romper nada (puedes quitarlo luego)
 import QRCodeLib from "qrcode"; // <- ya no se usa en descargar, lo dejamos igual
 import CardTable from "../components/CardTable";
@@ -71,10 +74,13 @@ const Catalogo = () => {
         talla: item.talla,
         precio: item.precio,
         id: item.id,
+        barcode: item.barcode || "",
+        barcodeShort: item.barcodeShort || "",
       });
     });
 
-    const ordenTallas = [
+    // Orden de tallas según producto
+    const ordenGeneral = [
       "6",
       "8",
       "10",
@@ -87,6 +93,26 @@ const Catalogo = () => {
       "XL",
       "XXL",
     ];
+    const ordenPantalon = [
+      "6",
+      "8",
+      "10",
+      "12",
+      "14",
+      "16",
+      "28",
+      "30",
+      "32",
+      "34",
+      "36",
+      "38",
+      "40",
+    ];
+    const norm = (s) =>
+      String(s || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
     const colegiosArray = Object.keys(colegiosAgrupados)
       .sort()
       .map((colegio) => ({
@@ -97,8 +123,9 @@ const Catalogo = () => {
             prenda,
             tallas: Array.isArray(colegiosAgrupados[colegio][prenda])
               ? [...colegiosAgrupados[colegio][prenda]].sort((a, b) => {
-                  const ia = ordenTallas.indexOf(a.talla);
-                  const ib = ordenTallas.indexOf(b.talla);
+                  const order = norm(prenda) === "pantalon" ? ordenPantalon : ordenGeneral;
+                  const ia = order.indexOf(String(a.talla));
+                  const ib = order.indexOf(String(b.talla));
                   return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
                 })
               : [],
@@ -126,15 +153,29 @@ const Catalogo = () => {
     const codeValue = `${colegio}-${prenda}-${talla}-${precio}`;
 
     if (editandoId) {
-      await updateDoc(doc(db, "productos_catalogo", editandoId), {
-        ...producto,
-        barcode: codeValue, // <-- nuevo campo (compatibilidad: no borra otros)
-      });
+      // Actualización: conservar o generar barcodeShort durante la transición
+      const ref = doc(db, "productos_catalogo", editandoId);
+      try {
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? snap.data() : {};
+        const payload = { ...producto, barcode: codeValue };
+        if (!data.barcodeShort) {
+          const seq = await getNextBarcodeSequence(db);
+          payload.barcodeShort = formatShortBarcodeFromSeq(seq);
+        }
+        await updateDoc(ref, payload);
+      } catch (e) {
+        await updateDoc(ref, { ...producto, barcode: codeValue });
+      }
       setEditandoId(null);
     } else {
+      // Creación: asignar barcodeShort (principal) + barcode (legacy)
+      const seq = await getNextBarcodeSequence(db);
+      const shortCode = formatShortBarcodeFromSeq(seq);
       await addDoc(collection(db, "productos_catalogo"), {
         ...producto,
-        barcode: codeValue, // <-- nuevo campo
+        barcode: codeValue, // largo (fallback)
+        barcodeShort: shortCode, // corto (principal)
       });
     }
 
@@ -162,9 +203,11 @@ const Catalogo = () => {
       JsBarcode(svg, contenido, {
         format: "CODE128",
         displayValue: true,
-        fontSize: 16,
-        margin: 10,
-        height: 120,
+        fontSize: 14,
+        margin: 12, // Quiet zone ~3mm
+        height: 52, // >=13mm aprox
+        width: 2,   // ~0.33–0.43mm aprox
+        textMargin: 4,
       });
 
       // 2) Convertir a PNG y descargar (mismo nombre que ya usabas)
@@ -469,6 +512,7 @@ const Catalogo = () => {
                                       <tbody>
                                         {prod.tallas.map((t) => {
                                           const codeValue = `${colegioObj.colegio}-${prod.prenda}-${t.talla}-${t.precio}`;
+                                          const shortValue = t.barcodeShort || codeValue;
                                           return (
                                             <tr
                                               key={`talla-${colegioObj.colegio}-${prod.prenda}-${t.id}`}
@@ -510,10 +554,7 @@ const Catalogo = () => {
                                                     border: "1px solid #ddd",
                                                   }}
                                                 >
-                                                  <MiniBarcode
-                                                    value={codeValue}
-                                                    height={28}
-                                                  />
+                                                  <MiniBarcode value={shortValue} height={28} />
                                                 </div>
                                               </td>
                                               <td
@@ -574,7 +615,7 @@ const Catalogo = () => {
                                                   <button
                                                     onClick={() =>
                                                       descargarQR(
-                                                        codeValue,
+                                                        shortValue,
                                                         `barcode_${colegioObj.colegio}_${prod.prenda}_${t.talla}`
                                                       )
                                                     }
