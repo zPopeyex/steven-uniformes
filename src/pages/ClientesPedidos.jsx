@@ -41,6 +41,7 @@ import ClientModal from "../components/clients/ClientModal";
 import InvoicePreview from "../components/invoices/InvoicePreview";
 import { limit } from "firebase/firestore";
 import FacturaDetalle from "../components/FacturaDetalle";
+import { openShortInvoiceUrl } from "../lib/shortlinks";
 
 const FaTemplate = FaFileInvoice;
 
@@ -984,6 +985,7 @@ export default function ClientesPedidos() {
     return url;
   };
 
+ 
   /** Acorta con servicios públicos gratuitos (is.gd/v.gd via JSONP). Fallback: retorna la URL original. */
   const shortenUrl = async (url) => {
     try {
@@ -995,6 +997,8 @@ export default function ClientesPedidos() {
     }
   };
 
+ 
+ 
   /** Deduce género del cliente: f/m/null */
   const getClienteGenero = (cli) => {
     const g = (cli?.genero || cli?.sexo || "").toLowerCase();
@@ -1224,8 +1228,7 @@ export default function ClientesPedidos() {
       const blob = await buildInvoicePdfBlob(data, tipo);
       const fileUrl = await uploadPdfToDiscord(blob, `Pedido_${numero}.pdf`);
 
-      // 1) limpia query de Discord  2) intenta acortar
-      const shortUrl = await shortenUrl(fileUrl);
+      const shortUrl = await openShortInvoiceUrl(fileUrl);
       // 👇 texto YA percent-encodado (emojis en crudo)
       const textEncoded = buildWaTextEncoded({ data, shortUrl });
       const waUrl = `${base}&text=${textEncoded}`;
