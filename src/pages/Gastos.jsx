@@ -1,4 +1,4 @@
-// src/pages/Gastos.jsx
+// src/pages/Gastos.jsx - Modern UI/UX Refactored Version
 import React, { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase/firebaseConfig";
 import {
@@ -14,49 +14,16 @@ import {
   doc,
 } from "firebase/firestore";
 
-const UI = {
-  primary: "#0052CC",
-  primaryHover: "#0040A3",
-  green: "#21ba45",
-  border: "#E5E7EB",
-  radius: 14,
-  shadow: "0 12px 28px rgba(0,0,0,.08)",
-  headerBg: "#F3F6FF",
-};
+// Import new components
+import { ExpenseKPIRow, TotalExpenseKPI, ExpenseCountKPI, AverageExpenseKPI } from '../components/gastos/ExpenseKPI';
+import SupplierBadge from '../components/gastos/SupplierBadge';
+import ExpenseTypeBadge from '../components/gastos/ExpenseTypeBadge';
+import CurrencyCell, { CurrencyTotal } from '../components/gastos/CurrencyCell';
+import { TableEmptyState } from '../components/gastos/EmptyState';
+import { formatDateTime, formatExpenseDetail, calculateExpenseKPIs } from '../utils/format';
 
-const card = {
-  background: "#fff",
-  borderRadius: UI.radius,
-  boxShadow: UI.shadow,
-  padding: 16,
-};
-
-// 👇 más “aire” en inputs/labels
-const input = {
-  height: 46,
-  padding: "12px 14px",
-  borderRadius: UI.radius,
-  border: `1px solid ${UI.border}`,
-  outline: "none",
-  width: "100%",
-};
-const label = {
-  fontSize: 12,
-  color: "#6b7280",
-  marginBottom: 8,
-  display: "block",
-  fontWeight: 600,
-};
-const btn = (bg = UI.primary, color = "#fff") => ({
-  height: 44,
-  padding: "0 16px",
-  borderRadius: UI.radius,
-  border: "1px solid transparent",
-  background: bg,
-  color,
-  cursor: "pointer",
-  fontWeight: 700,
-});
+// Import new styles
+import '../styles/gastos.css';
 
 const TIPOS = ["Tela", "Mensajería", "Bordados", "Almuerzos", "Otro"];
 
@@ -93,6 +60,7 @@ export default function Gastos() {
   // ----- tabla -----
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [hoverRow, setHoverRow] = useState(null);
 
   // ----- helpers fecha -----
@@ -248,7 +216,7 @@ export default function Gastos() {
         return alert("Completa Cantidad y Precio unitario");
       }
 
-      // Clonar “limpio” (sin sentinels)
+      // Clonar "limpio" (sin sentinels)
       const clonedDetalle = JSON.parse(JSON.stringify(detalle));
       const proveedorName =
         proveedores.find((p) => p.id === proveedorId)?.empresa || "—";
@@ -380,8 +348,24 @@ export default function Gastos() {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
   const provName = (id) => proveedores.find((p) => p.id === id)?.empresa || "—";
-  const toastOK = (text) => console.log("✅", text);
+  const getProveedor = (id) => proveedores.find((p) => p.id === id) || null;
+  const toastOK = (text) => {
+    console.log("✅", text);
+    // TODO: Replace with actual toast notification system
+  };
+  
+  // Calculate KPIs from current filtered rows
+  const kpis = useMemo(() => calculateExpenseKPIs(rows), [rows]);
+  
+  // Clear all filters
+  const clearFilters = () => {
+    setFDesde(firstDayOfYearLocal());
+    setFHasta(dateOnlyLocal(new Date()));
+    setFTipo("");
+    setFProv("");
+  };
 
   // ======= helpers de render =======
   // Busca descripción de tela por proveedor + código (para mostrar en tablas)
@@ -392,63 +376,30 @@ export default function Gastos() {
       const code = String(codigo || "").trim();
       const t = arr.find((tt) => String(tt?.codigo || "").trim() === code);
       return t?.descripcion || t?.nombre || t?.desc || t?.detalle || null;
-    } catch (e) {
+    } catch {
       return null;
     }
   };
-  function detallePretty(r) {
-    const t = r.tipo;
-    const d = r.detalle || {};
-    if (t === "Tela") {
-      const metros = d.metros || 0;
-      const vu = r.valor_unitario ?? 0;
-      return [
-        "Tela",
-        `Código: ${d.codigo_tela || "—"}`,
-        `Metros: ${metros}`,
-        `Valor/metro: $${Number(vu).toLocaleString("es-CO")}`,
-      ].join("\n");
-    }
-    if (t === "Mensajería") {
-      return [
-        "Mensajería",
-        `Empresa/Persona: ${d.empresa_persona || "—"}`,
-        `Motivo: ${d.motivo || "—"}`,
-        `Costo: $${Number(d.costo || 0).toLocaleString("es-CO")}`,
-      ].join("\n");
-    }
-    if (t === "Bordados") {
-      return [
-        "Bordados",
-        `Bordadora: ${d.bordadora || "—"}`,
-        `Descripción: ${d.descripcion_bordado || "—"}`,
-        `Colegio: ${d.colegio || "—"}`,
-        `Cantidad: ${d.cantidad || 0}  •  PU: $${Number(
-          r.valor_unitario || 0
-        ).toLocaleString("es-CO")}`,
-      ].join("\n");
-    }
-    if (t === "Almuerzos") {
-      return ["Almuerzos", `Detalle: ${d.otros_detalle || "—"}`].join("\n");
-    }
-    return ["Otros", `Detalle: ${d.otros_detalle || "—"}`].join("\n");
+
+  function detallePrettyV2(r) {
+    return formatExpenseDetail(r, proveedores);
   }
 
-  // 👇 NUEVO: helper para la tabla de pendientes (evita crash)
-  function pendientePretty(it) {
+  function pendientePrettyV2(it) {
     const t = it.tipo;
     const d = it.detalle || {};
     if (t === "Tela") {
       const metros = parseFloat(d.metros || 0);
       const total = Number(d.valor_total || 0);
       const vu = metros ? Math.round(total / metros) : 0;
+      const nombreTela = lookupTelaDescripcion(it.proveedorId, d.codigo_tela);
       return [
-        "Tela",
-        `Código: ${d.codigo_tela || "—"}`,
+        `Tela: ${nombreTela || d.codigo_tela || "—"}`,
         `Metros: ${d.metros || 0}`,
         `Valor/metro: $${vu.toLocaleString("es-CO")}`,
       ].join("\n");
     }
+    // Use existing logic for other types
     if (t === "Mensajería") {
       return [
         "Mensajería",
@@ -476,86 +427,36 @@ export default function Gastos() {
     return ["Otros", `Detalle: ${d.otros_detalle || "—"}`].join("\n");
   }
 
-  // Versión extendida: muestra nombre/descripcion de la tela en lugar del código
-  function detallePrettyV2(r) {
-    const t = r.tipo;
-    const d = r.detalle || {};
-    if (t === "Tela") {
-      const metros = d.metros || 0;
-      const vu = r.valor_unitario ?? 0;
-      const nombreTela = lookupTelaDescripcion(r.proveedorId, d.codigo_tela);
-      return [
-        `Tela: ${nombreTela || d.codigo_tela || "—"}`,
-        `Metros: ${metros}`,
-        `Valor/metro: $${Number(vu).toLocaleString("es-CO")}`,
-      ].join("\n");
-    }
-    return detallePretty(r);
-  }
-
-  function pendientePrettyV2(it) {
-    const t = it.tipo;
-    const d = it.detalle || {};
-    if (t === "Tela") {
-      const metros = parseFloat(d.metros || 0);
-      const total = Number(d.valor_total || 0);
-      const vu = metros ? Math.round(total / metros) : 0;
-      const nombreTela = lookupTelaDescripcion(it.proveedorId, d.codigo_tela);
-      return [
-        `Tela: ${nombreTela || d.codigo_tela || "—"}`,
-        `Metros: ${d.metros || 0}`,
-        `Valor/metro: $${vu.toLocaleString("es-CO")}`,
-      ].join("\n");
-    }
-    return pendientePretty(it);
-  }
-
   function cryptoRandom() {
     return Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 
   // ======= UI =======
   return (
-    <div style={{ padding: 20, fontFamily: "Segoe UI, system-ui, sans-serif" }}>
-      {/* Encabezado */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 12,
-        }}
-      >
-        <div
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: UI.radius,
-            background: UI.headerBg,
-            display: "grid",
-            placeItems: "center",
-            fontSize: 18,
-          }}
-        >
-          💸
+    <div className="gastos-container">
+      {/* Header with KPIs */}
+      <div className="gastos-header">
+        <div className="gastos-title-section">
+          <div className="gastos-icon">💸</div>
+          <h1 className="gastos-title">Gastos</h1>
         </div>
-        <h2 style={{ margin: 0, color: "#1f2937" }}>Gastos</h2>
+        
+        {/* KPI Row */}
+        <ExpenseKPIRow loading={loading}>
+          <TotalExpenseKPI value={kpis.total} loading={loading} />
+          <ExpenseCountKPI value={kpis.count} loading={loading} />
+          <AverageExpenseKPI value={kpis.average} loading={loading} />
+        </ExpenseKPIRow>
       </div>
 
-      {/* Formulario (grid responsivo) */}
-      <form onSubmit={guardarGasto} style={{ ...card, marginBottom: 16 }}>
-        {/* fila 1: tipo / proveedor / fecha */}
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          }}
-        >
-          <div>
-            <label style={label}>Tipo de gasto</label>
+      {/* Modern Form */}
+      <form onSubmit={guardarGasto} className="gastos-form-card">
+        {/* Main form fields */}
+        <div className="gastos-form-grid gastos-form-grid--main">
+          <div className="gastos-form-group">
+            <label className="gastos-label">Tipo de gasto</label>
             <select
-              style={input}
+              className="gastos-select"
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
             >
@@ -566,10 +467,10 @@ export default function Gastos() {
               ))}
             </select>
           </div>
-          <div>
-            <label style={label}>Proveedor</label>
+          <div className="gastos-form-group">
+            <label className="gastos-label">Proveedor</label>
             <select
-              style={input}
+              className="gastos-select"
               value={proveedorId}
               onChange={(e) => setProveedorId(e.target.value)}
             >
@@ -580,10 +481,10 @@ export default function Gastos() {
               ))}
             </select>
           </div>
-          <div>
-            <label style={label}>Fecha y hora</label>
+          <div className="gastos-form-group">
+            <label className="gastos-label">Fecha y hora</label>
             <input
-              style={input}
+              className="gastos-input"
               type="datetime-local"
               value={fechaHora}
               onChange={(e) => setFechaHora(e.target.value)}
@@ -591,23 +492,16 @@ export default function Gastos() {
           </div>
         </div>
 
-        {/* fila 2: campos dinámicos */}
-        <div
-          style={{
-            marginTop: 12,
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          }}
-        >
+        {/* Dynamic detail fields */}
+        <div className="gastos-form-grid gastos-form-grid--details">
           {tipo === "Tela" && (
             <>
-              <div style={{ display: "grid", gap: 8 }}>
-                <label style={label}>Código de tela</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Código de tela</label>
                 {telasProveedor.length > 0 ? (
                   <>
                     <select
-                      style={input}
+                      className="gastos-select"
                       value={detalle.codigo_tela}
                       onChange={onSelectTelaProveedor}
                     >
@@ -619,7 +513,7 @@ export default function Gastos() {
                       ))}
                     </select>
                     <input
-                      style={input}
+                      className="gastos-input"
                       placeholder="O escribe un código manual…"
                       value={detalle.codigo_tela}
                       onChange={(e) =>
@@ -629,7 +523,7 @@ export default function Gastos() {
                   </>
                 ) : (
                   <input
-                    style={input}
+                    className="gastos-input"
                     placeholder="Código de tela"
                     value={detalle.codigo_tela}
                     onChange={(e) =>
@@ -638,21 +532,21 @@ export default function Gastos() {
                   />
                 )}
               </div>
-              <div>
-                <label style={label}>Metros</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Metros</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   type="number"
-                  step="0.01" // decimales
+                  step="0.01"
                   min="0"
                   value={detalle.metros}
                   onChange={(e) => onChangeDetalle("metros", e.target.value)}
                 />
               </div>
-              <div>
-                <label style={label}>Valor total</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Valor total</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -667,20 +561,20 @@ export default function Gastos() {
 
           {tipo === "Mensajería" && (
             <>
-              <div>
-                <label style={label}>Empresa / Persona</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Empresa / Persona</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   value={detalle.empresa_persona}
                   onChange={(e) =>
                     onChangeDetalle("empresa_persona", e.target.value)
                   }
                 />
               </div>
-              <div>
-                <label style={label}>Costo</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Costo</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -688,10 +582,10 @@ export default function Gastos() {
                   onChange={(e) => onChangeDetalle("costo", e.target.value)}
                 />
               </div>
-              <div>
-                <label style={label}>Motivo</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Motivo</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   value={detalle.motivo}
                   onChange={(e) => onChangeDetalle("motivo", e.target.value)}
                 />
@@ -701,46 +595,46 @@ export default function Gastos() {
 
           {tipo === "Bordados" && (
             <>
-              <div>
-                <label style={label}>Bordadora</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Bordadora</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   value={detalle.bordadora}
                   onChange={(e) => onChangeDetalle("bordadora", e.target.value)}
                 />
               </div>
-              <div>
-                <label style={label}>Descripción</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Descripción</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   value={detalle.descripcion_bordado}
                   onChange={(e) =>
                     onChangeDetalle("descripcion_bordado", e.target.value)
                   }
                 />
               </div>
-              <div>
-                <label style={label}>Colegio</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Colegio</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   value={detalle.colegio}
                   onChange={(e) => onChangeDetalle("colegio", e.target.value)}
                 />
               </div>
-              <div>
-                <label style={label}>Cantidad</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Cantidad</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   type="number"
                   min="0"
                   value={detalle.cantidad}
                   onChange={(e) => onChangeDetalle("cantidad", e.target.value)}
                 />
               </div>
-              <div>
-                <label style={label}>Precio unitario</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Precio unitario</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -755,20 +649,20 @@ export default function Gastos() {
 
           {(tipo === "Almuerzos" || tipo === "Otro") && (
             <>
-              <div style={{ gridColumn: "span 2" }}>
-                <label style={label}>Detalle</label>
+              <div className="gastos-form-group" style={{ gridColumn: "span 2" }}>
+                <label className="gastos-label">Detalle</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   value={detalle.otros_detalle}
                   onChange={(e) =>
                     onChangeDetalle("otros_detalle", e.target.value)
                   }
                 />
               </div>
-              <div>
-                <label style={label}>Valor total</label>
+              <div className="gastos-form-group">
+                <label className="gastos-label">Valor total</label>
                 <input
-                  style={input}
+                  className="gastos-input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -782,60 +676,60 @@ export default function Gastos() {
           )}
         </div>
 
-        {/* Totales dinámicos */}
-        <div style={{ marginTop: 12, color: "#1f2937" }}>
-          {tipo === "Tela" &&
-            (() => {
-              const metros = parseFloat(detalle.metros || 0);
-              const total = Number(detalle.valor_total || 0);
-              const unitExact = metros ? total / metros : 0;
-              return (
-                <div>
-                  <b>Valor/metro (exacto):</b>{" "}
-                  {unitExact.toLocaleString("es-CO", {
-                    maximumFractionDigits: 2,
-                  })}
-                  {"  "}
-                  <span style={{ color: "#6b7280" }}>
-                    (se guarda redondeado:{" "}
-                    {metros ? Math.round(unitExact).toLocaleString("es-CO") : 0}
-                    )
-                  </span>
-                </div>
-              );
-            })()}
-          {tipo === "Bordados" &&
-            (() => {
-              const cant = Number(detalle.cantidad || 0);
-              const pu = Number(detalle.precio_unitario || 0);
-              const total = cant * pu;
-              return (
-                <div>
-                  <b>Total:</b> {total.toLocaleString("es-CO")}
-                </div>
-              );
-            })()}
-        </div>
+        {/* Dynamic calculations display */}
+        {tipo === "Tela" && (() => {
+          const metros = parseFloat(detalle.metros || 0);
+          const total = Number(detalle.valor_total || 0);
+          const unitExact = metros ? total / metros : 0;
+          return (
+            <div className="gastos-calculation">
+              <strong>Valor/metro (exacto):</strong>{" "}
+              {unitExact.toLocaleString("es-CO", {
+                maximumFractionDigits: 2,
+              })}
+              {"  "}
+              <span className="muted">
+                (se guarda redondeado:{" "}
+                {metros ? Math.round(unitExact).toLocaleString("es-CO") : 0}
+                )
+              </span>
+            </div>
+          );
+        })()}
+        
+        {tipo === "Bordados" && (() => {
+          const cant = Number(detalle.cantidad || 0);
+          const pu = Number(detalle.precio_unitario || 0);
+          const total = cant * pu;
+          return (
+            <div className="gastos-calculation">
+              <strong>Total:</strong> {total.toLocaleString("es-CO")}
+            </div>
+          );
+        })()}
 
-        {/* Acciones */}
-        <div
-          style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}
-        >
-          <button type="button" onClick={agregarOtro} style={btn(UI.primary)}>
+        {/* Action buttons */}
+        <div className="gastos-actions">
+          <button 
+            type="button" 
+            onClick={agregarOtro} 
+            className="gastos-btn gastos-btn--primary"
+            disabled={loading}
+          >
             + Agregar otro
           </button>
           <button
             type="button"
             onClick={guardarTodo}
             disabled={loading || pendientes.length === 0}
-            style={btn(UI.green)}
+            className="gastos-btn gastos-btn--green"
           >
             Guardar todo ({pendientes.length})
           </button>
           <button
             type="submit"
             disabled={loading}
-            style={btn("#9CA3AF", "#fff")}
+            className="gastos-btn gastos-btn--secondary"
           >
             Guardar uno
           </button>
@@ -844,50 +738,46 @@ export default function Gastos() {
 
       {/* Lista de pendientes */}
       {pendientes.length > 0 && (
-        <div style={{ ...card, marginBottom: 16 }}>
-          <div style={{ fontWeight: 800, color: "#1f2937", marginBottom: 8 }}>
-            Gastos por guardar ({pendientes.length})
+        <div className="gastos-pending-card">
+          <div className="gastos-pending-title">
+            Gastos por guardar
+            <span className="gastos-pending-count">{pendientes.length}</span>
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="gastos-table-wrapper">
+            <table className="gastos-table">
               <thead>
-                <tr style={{ background: UI.headerBg }}>
-                  <th style={{ padding: 10 }}>Fecha</th>
-                  <th style={{ padding: 10 }}>Tipo</th>
-                  <th style={{ padding: 10 }}>Proveedor</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>Detalle</th>
-                  <th style={{ padding: 10 }}>Acción</th>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Proveedor</th>
+                  <th style={{ textAlign: "left" }}>Detalle</th>
+                  <th>Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {pendientes.map((it) => {
                   const d = new Date(it.fechaHora);
-                  const fStr =
-                    d.toLocaleDateString() +
-                    " " +
-                    d.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
+                  const fStr = formatDateTime(d);
                   return (
-                    <tr
-                      key={it.id}
-                      style={{ borderBottom: `1px solid ${UI.border}` }}
-                    >
-                      <td style={{ padding: 10, whiteSpace: "nowrap" }}>
-                        {fStr}
+                    <tr key={it.id}>
+                      <td className="gastos-table-date">{fStr}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <ExpenseTypeBadge type={it.tipo} size="sm" />
                       </td>
-                      <td style={{ padding: 10, textAlign: "center" }}>
-                        {it.tipo}
+                      <td>
+                        <SupplierBadge 
+                          supplier={getProveedor(it.proveedorId)} 
+                          compact={true} 
+                        />
                       </td>
-                      <td style={{ padding: 10 }}>{it.proveedorName}</td>
-                      <td style={{ padding: 10, whiteSpace: "pre-line" }}>
-                      {pendientePrettyV2(it)}
+                      <td className="gastos-table-detail">
+                        {pendientePrettyV2(it)}
                       </td>
-                      <td style={{ padding: 10 }}>
+                      <td>
                         <button
                           onClick={() => quitarPendiente(it.id)}
-                          style={btn("#ef4444")}
+                          className="gastos-btn gastos-btn--secondary"
+                          style={{ fontSize: '12px', padding: '6px 12px' }}
                         >
                           Quitar
                         </button>
@@ -901,151 +791,135 @@ export default function Gastos() {
         </div>
       )}
 
-      {/* Tabla de gastos (filtros con mejor gap) */}
-      <div style={{ ...card }}>
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-            alignItems: "end",
-            marginBottom: 10,
-          }}
-        >
-          <div>
-            <label style={label}>Desde</label>
-            <input
-              style={input}
-              type="date"
-              value={fDesde}
-              onChange={(e) => setFDesde(e.target.value)}
+      {/* Modern Table Card */}
+      <div className="gastos-table-card">
+        {/* Sticky Filters Bar */}
+        <div className="gastos-filters-bar">
+          <div className="gastos-filters-grid">
+            <div className="gastos-form-group">
+              <label className="gastos-label">Desde</label>
+              <input
+                className="gastos-input"
+                type="date"
+                value={fDesde}
+                onChange={(e) => setFDesde(e.target.value)}
+              />
+            </div>
+            <div className="gastos-form-group">
+              <label className="gastos-label">Hasta</label>
+              <input
+                className="gastos-input"
+                type="date"
+                value={fHasta}
+                onChange={(e) => setFHasta(e.target.value)}
+              />
+            </div>
+            <div className="gastos-form-group">
+              <label className="gastos-label">Tipo</label>
+              <select
+                className="gastos-select"
+                value={fTipo}
+                onChange={(e) => setFTipo(e.target.value)}
+              >
+                <option value="">Todos</option>
+                {TIPOS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="gastos-form-group">
+              <label className="gastos-label">Proveedor</label>
+              <select
+                className="gastos-select"
+                value={fProv}
+                onChange={(e) => setFProv(e.target.value)}
+              >
+                <option value="">Todos</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.empresa}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="gastos-form-group">
+              <button 
+                type="button" 
+                onClick={cargarTabla} 
+                className="gastos-btn gastos-btn--primary"
+                disabled={loading}
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+          <div className="gastos-filters-total">
+            <CurrencyCell
+              value={rows.reduce((acc, r) => acc + Number(r.valor_total || 0), 0)}
+              size="lg"
+              color="primary"
+              align="right"
             />
-          </div>
-          <div>
-            <label style={label}>Hasta</label>
-            <input
-              style={input}
-              type="date"
-              value={fHasta}
-              onChange={(e) => setFHasta(e.target.value)}
-            />
-          </div>
-          <div>
-            <label style={label}>Tipo</label>
-            <select
-              style={input}
-              value={fTipo}
-              onChange={(e) => setFTipo(e.target.value)}
-            >
-              <option value="">Todos</option>
-              {TIPOS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={label}>Proveedor</label>
-            <select
-              style={input}
-              value={fProv}
-              onChange={(e) => setFProv(e.target.value)}
-            >
-              <option value="">Todos</option>
-              {proveedores.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.empresa}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <button type="button" onClick={cargarTabla} style={btn(UI.primary)}>
-              Aplicar
-            </button>
-          </div>
-          <div
-            style={{
-              marginLeft: "auto",
-              fontWeight: 800,
-              color: UI.primary,
-              alignSelf: "center",
-            }}
-          >
-            Total:{" "}
-            {rows
-              .reduce((acc, r) => acc + Number(r.valor_total || 0), 0)
-              .toLocaleString("es-CO")}
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: UI.headerBg }}>
-                <th style={{ padding: 10 }}>Fecha</th>
-                <th style={{ padding: 10 }}>Tipo</th>
-                <th style={{ padding: 10 }}>Proveedor</th>
-                <th style={{ padding: 10, textAlign: "left" }}>Detalle</th>
-                <th style={{ padding: 10 }}>Valor total</th>
+        {/* Table */}
+        <div className="gastos-table-wrapper">
+          <table className="gastos-table">
+            <thead className="gastos-table-header">
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Proveedor</th>
+                <th style={{ textAlign: "left" }}>Detalle</th>
+                <th>Valor total</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
-                const d =
-                  r.fechaHora?.toDate?.() ||
+              {rows.length > 0 ? rows.map((r) => {
+                const d = r.fechaHora?.toDate?.() ||
                   (r.fechaHora?.seconds
                     ? new Date(r.fechaHora.seconds * 1000)
                     : new Date());
-                const fStr =
-                  d.toLocaleDateString() +
-                  " " +
-                  d.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                const fStr = formatDateTime(d);
+                
                 return (
                   <tr
                     key={r.id}
                     onMouseEnter={() => setHoverRow(r.id)}
                     onMouseLeave={() => setHoverRow(null)}
-                    style={{
-                      borderBottom: `1px solid ${UI.border}`,
-                      background:
-                        hoverRow === r.id ? "rgba(0,82,204,.06)" : "#fff",
-                      transition: "background .12s ease",
-                    }}
                   >
-                    <td style={{ padding: 10, whiteSpace: "nowrap" }}>
-                      {fStr}
+                    <td className="gastos-table-date">{fStr}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <ExpenseTypeBadge type={r.tipo} size="sm" />
                     </td>
-                    <td style={{ padding: 10, textAlign: "center" }}>
-                      {r.tipo}
+                    <td>
+                      <SupplierBadge 
+                        supplier={getProveedor(r.proveedorId)}
+                        showTooltip={true}
+                      />
                     </td>
-                    <td style={{ padding: 10 }}>{provName(r.proveedorId)}</td>
-                    <td style={{ padding: 10, whiteSpace: "pre-line" }}>
+                    <td className="gastos-table-detail">
                       {detallePrettyV2(r)}
                     </td>
-                    <td
-                      style={{
-                        padding: 10,
-                        textAlign: "right",
-                        color: UI.primary,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {Number(r.valor_total || 0).toLocaleString("es-CO")}
+                    <td className="gastos-table-amount">
+                      <CurrencyCell
+                        value={r.valor_total}
+                        size="default"
+                        color="primary"
+                        align="right"
+                      />
                     </td>
                   </tr>
                 );
-              })}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={{ padding: 14, color: "#6b7280" }}>
-                    Sin gastos en el rango.
-                  </td>
-                </tr>
+              }) : (
+                <TableEmptyState
+                  colSpan={5}
+                  type={fTipo || fProv || (fDesde !== firstDayOfYearLocal()) ? "no-results" : "no-data"}
+                  onAction={clearFilters}
+                />
               )}
             </tbody>
           </table>
