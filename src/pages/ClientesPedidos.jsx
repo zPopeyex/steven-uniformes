@@ -41,7 +41,7 @@ import ClientModal from "../components/clients/ClientModal";
 import InvoicePreview from "../components/invoices/InvoicePreview";
 import { limit } from "firebase/firestore";
 import FacturaDetalle from "../components/FacturaDetalle";
-import { openShortInvoiceUrl } from "../lib/shortlinks";
+// import { openShortInvoiceUrl } from "../lib/shortlinks";
 
 const FaTemplate = FaFileInvoice;
 
@@ -1228,7 +1228,7 @@ export default function ClientesPedidos() {
       const blob = await buildInvoicePdfBlob(data, tipo);
       const fileUrl = await uploadPdfToDiscord(blob, `Pedido_${numero}.pdf`);
 
-      const shortUrl = await openShortInvoiceUrl(fileUrl);
+      const shortUrl = await shortenUrl(fileUrl);
       // 👇 texto YA percent-encodado (emojis en crudo)
       const textEncoded = buildWaTextEncoded({ data, shortUrl });
       const waUrl = `${base}&text=${textEncoded}`;
