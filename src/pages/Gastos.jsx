@@ -476,6 +476,40 @@ export default function Gastos() {
     return ["Otros", `Detalle: ${d.otros_detalle || "—"}`].join("\n");
   }
 
+  // Versión extendida: muestra nombre/descripcion de la tela en lugar del código
+  function detallePrettyV2(r) {
+    const t = r.tipo;
+    const d = r.detalle || {};
+    if (t === "Tela") {
+      const metros = d.metros || 0;
+      const vu = r.valor_unitario ?? 0;
+      const nombreTela = lookupTelaDescripcion(r.proveedorId, d.codigo_tela);
+      return [
+        `Tela: ${nombreTela || d.codigo_tela || "—"}`,
+        `Metros: ${metros}`,
+        `Valor/metro: $${Number(vu).toLocaleString("es-CO")}`,
+      ].join("\n");
+    }
+    return detallePretty(r);
+  }
+
+  function pendientePrettyV2(it) {
+    const t = it.tipo;
+    const d = it.detalle || {};
+    if (t === "Tela") {
+      const metros = parseFloat(d.metros || 0);
+      const total = Number(d.valor_total || 0);
+      const vu = metros ? Math.round(total / metros) : 0;
+      const nombreTela = lookupTelaDescripcion(it.proveedorId, d.codigo_tela);
+      return [
+        `Tela: ${nombreTela || d.codigo_tela || "—"}`,
+        `Metros: ${d.metros || 0}`,
+        `Valor/metro: $${vu.toLocaleString("es-CO")}`,
+      ].join("\n");
+    }
+    return pendientePretty(it);
+  }
+
   function cryptoRandom() {
     return Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
