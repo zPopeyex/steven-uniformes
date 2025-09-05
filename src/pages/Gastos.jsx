@@ -384,6 +384,18 @@ export default function Gastos() {
   const toastOK = (text) => console.log("✅", text);
 
   // ======= helpers de render =======
+  // Busca descripción de tela por proveedor + código (para mostrar en tablas)
+  const lookupTelaDescripcion = (provId, codigo) => {
+    try {
+      const p = proveedores.find((pp) => pp.id === provId);
+      const arr = Array.isArray(p?.telas) ? p.telas : [];
+      const code = String(codigo || "").trim();
+      const t = arr.find((tt) => String(tt?.codigo || "").trim() === code);
+      return t?.descripcion || t?.nombre || t?.desc || t?.detalle || null;
+    } catch (e) {
+      return null;
+    }
+  };
   function detallePretty(r) {
     const t = r.tipo;
     const d = r.detalle || {};
@@ -836,7 +848,7 @@ export default function Gastos() {
                       </td>
                       <td style={{ padding: 10 }}>{it.proveedorName}</td>
                       <td style={{ padding: 10, whiteSpace: "pre-line" }}>
-                        {pendientePretty(it)}
+                      {pendientePrettyV2(it)}
                       </td>
                       <td style={{ padding: 10 }}>
                         <button
@@ -979,7 +991,7 @@ export default function Gastos() {
                     </td>
                     <td style={{ padding: 10 }}>{provName(r.proveedorId)}</td>
                     <td style={{ padding: 10, whiteSpace: "pre-line" }}>
-                      {detallePretty(r)}
+                      {detallePrettyV2(r)}
                     </td>
                     <td
                       style={{
