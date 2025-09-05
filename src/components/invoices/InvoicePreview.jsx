@@ -60,7 +60,7 @@ export default function InvoicePreview({ template, data }) {
         {/* IZQUIERDA: Logo + info empresa */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <img
-            src={template.logoUrl /* p.ej. https://i.imgur.com/XXXXX.png */}
+            src={(template.logoDataUrl || template.logoUrl) /* dataURL preferida */}
             alt="Logo"
             className="invoice-logo"
             style={{ maxHeight: 80, maxWidth: 200, objectFit: "contain" }}

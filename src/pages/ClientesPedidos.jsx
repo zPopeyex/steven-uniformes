@@ -855,6 +855,32 @@ export default function ClientesPedidos() {
     alert("Plantilla guardada");
   };
 
+  const fileToDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      try {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      } catch (e) {
+        reject(e);
+      }
+    });
+
+  const handleLogoFileChange = async (file) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setEditingTemplate((et) => ({
+        ...et,
+        data: { ...et.data, logoDataUrl: dataUrl },
+      }));
+    } catch (e) {
+      console.warn("No se pudo leer el archivo del logo", e);
+      alert("No se pudo leer el archivo del logo");
+    }
+  };
+
   // Filtros
   const filteredClientes = useMemo(
     () =>
@@ -958,32 +984,14 @@ export default function ClientesPedidos() {
     return url;
   };
 
-  /** Intenta acortar con is.gd y si falla usa TinyURL. Si todo falla, retorna la limpia. */
+  /** Acorta con servicios públicos gratuitos (is.gd/v.gd via JSONP). Fallback: retorna la URL original. */
   const shortenUrl = async (url) => {
-    const target = url; // mantener query de Discord
-
-    const tryShort = async (api) => {
-      const r = await fetch(api);
-      if (!r.ok) throw new Error("shortener failed");
-      const t = (await r.text()).trim();
-      if (/^https?:\/\//i.test(t)) return t;
-      throw new Error("invalid short url");
-    };
-
     try {
-      return await tryShort(
-        `https://is.gd/create.php?format=simple&url=${encodeURIComponent(
-          target
-        )}`
-      );
-    } catch {
-      try {
-        return await tryShort(
-          `https://tinyurl.com/api-create.php?url=${encodeURIComponent(target)}`
-        );
-      } catch {
-        return target; // fallback: sin acortar pero funcional
-      }
+      const { shortenUrlOfficial } = await import("../lib/shortlinks");
+      return await shortenUrlOfficial(url);
+    } catch (e) {
+      console.warn("shortenUrl fallback to longUrl", e);
+      return url;
     }
   };
 
@@ -1941,7 +1949,7 @@ export default function ClientesPedidos() {
                   </h3>
                   <div style={{ marginBottom: 16 }}>
                     <img
-                      src={template?.logoUrl}
+                      src={template?.logoDataUrl || template?.logoUrl}
                       alt="Logo"
                       style={{
                         maxWidth: "100%",
@@ -2479,6 +2487,23 @@ export default function ClientesPedidos() {
                   }
                   placeholder="https://tu-logo.png"
                 />
+                <div style={{ marginTop: 8 }}>
+                  <label className="form-label">o sube un archivo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleLogoFileChange(e.target.files?.[0])}
+                  />
+                  {editingTemplate.data.logoDataUrl && (
+                    <div style={{ marginTop: 8 }}>
+                      <img
+                        src={editingTemplate.data.logoDataUrl}
+                        alt="Preview"
+                        style={{ maxHeight: 60, maxWidth: 160, objectFit: "contain" }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Texto de Encabezado</label>
