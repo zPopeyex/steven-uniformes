@@ -1,26 +1,41 @@
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { shortenUrlFree } from "./freeShorteners";
 
+/**
+ * Abre una pestaña inmediatamente y la redirige al shortUrl cuando esté listo.
+ * Fallback: si falla o el popup es bloqueado, navega a longUrl.
+ *
+ * @param {string} longUrl
+ * @param {{ app?: import('firebase/app').FirebaseApp }} [opts]
+ */
 export async function openShortInvoiceUrl(longUrl, opts = {}) {
   const popup = window.open("about:blank", "_blank", "noopener,noreferrer");
   try {
-    const functions = getFunctions(opts.app);
-    const shorten = httpsCallable(functions, "shortenUrl");
-    const { data } = await shorten({ longUrl });
-    const shortUrl = data?.shortUrl || longUrl;
+    const shortUrl = await shortenUrlOfficial(longUrl, opts);
 
     if (popup) {
-      popup.location = shortUrl;
+      popup.location = shortUrl; // ✅ abre de inmediato, sin countdown
     } else {
       window.location.assign(shortUrl);
     }
-    return shortUrl;
   } catch (err) {
     console.error("Shorten error", err);
     if (popup) {
-      popup.location = longUrl;
+      popup.location = longUrl; // fallback inmediato
     } else {
       window.location.assign(longUrl);
     }
-    return longUrl;
   }
+}
+
+/**
+ * Utility: sólo acorta y retorna la URL (sin abrir ventana).
+ * @param {string} longUrl
+ * @param {{ app?: import('firebase/app').FirebaseApp }} [opts]
+ * @returns {Promise<string>}
+ */
+export async function shortenUrlOfficial(longUrl, opts = {}) {
+  // Prefer free public shortener (no server needed). Preserves full query.
+  const short = await shortenUrlFree(longUrl);
+  if (short && typeof short === "string") return short;
+  return longUrl;
 }
